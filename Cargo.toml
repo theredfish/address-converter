@@ -1,0 +1,35 @@
+[package]
+name = "address_converter"
+version = "0.1.0"
+edition = "2021"
+authors = ["theredifh <juliandidier@protonmail.com>"]
+
+description = "CLI tool to manage and convert French postal addresses and ISO 20022 format addresses."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/theredfish/address_converter"
+
+[features]
+cli = ["clap"]
+api = [] # API support could be enabled and activate axum for example
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+clap = { version = "4.4", features = ["derive"], optional = true}
+
+[dev-dependencies]
+
+[[bin]]
+name = "cli"
+path = "bin/cli.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "api"
+path = "bin/api.rs"
+required-features = ["api"]
+
+[lib]
+name = "address_converter"
+path = "src/lib.rs"
