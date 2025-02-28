@@ -1,34 +1,31 @@
 use chrono::{DateTime, Utc};
 use strum::EnumString;
 use uuid::Uuid;
-use std::fmt::{self};
-use std::string::ToString;
-use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub struct Address {
     /// The unique identifier of the address.
-    id: Uuid,
+    pub id: Uuid,
     /// Datetime in UTC of the last modification. Both creation and update dates
     /// are tracked with this field.
-    updated_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     /// The type of address. Can be an individual or a business. This
     /// information is used for specific conversion rules depending on the type.
-    kind: AddressKind,
+    pub kind: AddressKind,
     /// Keep track of the receipient details. This information is tracked to
     /// build back addresses where the recipient is required. Some standards
     /// like ISO 20022 store this information outside of the postal address.
-    recipient: Recipient,
+    pub recipient: Recipient,
     /// Extra delivery point information such as the building, the entry or
     /// postbox.
-    delivery_point: Option<DeliveryPoint>,
+    pub delivery_point: Option<DeliveryPoint>,
     /// The street address information.
-    street: Street,
+    pub street: Street,
     /// The postal details such as the postcode (or zipcode), town and extra
     /// location information.
-    postal_details: PostalDetails,
+    pub postal_details: PostalDetails,
     /// The address country.
-    country: Country,
+    pub country: Country,
 }
 
 #[derive(Debug, PartialEq)]
@@ -57,7 +54,7 @@ pub enum Recipient {
 }
 
 impl Recipient {
-    fn denomination(&self) -> Option<String> {
+    pub fn denomination(&self) -> Option<String> {
         match self {
             Recipient::Business { contact, .. } => contact.clone(),
             Recipient::Individual { name } => Some(name.clone()),
@@ -68,104 +65,29 @@ impl Recipient {
 #[derive(Debug, PartialEq)]
 pub struct DeliveryPoint {
     /// The external delivery point (building, entry, ...).
-    external: Option<String>,
+    pub external: Option<String>,
     /// The internal delivery point (appartment, staircase, ...).
-    internal: Option<String>,
+    pub internal: Option<String>,
     /// Complementary delivery point information (P.O 123).
-    postbox: Option<String>,
+    pub postbox: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Street {
     /// The street number (2, 2BIS, 2D).
-    number: Option<String>,
+    pub number: Option<String>,
     /// The street name ("LE VILLAGE", "RUE DE L’EGLISE").
-    name: String,
+    pub name: String,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct PostalDetails {
     /// The zipcode or postcode of the postal address (56000, K1A 0A6)
-    postcode: String,
-    /// The town of the postal address.
-    town: String,
-    /// Complementary town information for distribution.
-    town_location: Option<String>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum FrenchAddress {
-    /// An individual french address.
-    Individual(IndividualFrenchAddress),
-    /// A business french address.
-    Business(BusinessFrenchAddress)
-}
-
-#[derive(Debug, PartialEq)]
-pub struct IndividualFrenchAddress {
-    /// The individual identity
-    /// (Civility - title / quality - firstname lastname).
-    pub name: String,
-    /// Additional information of the internal delivery point
-    /// (appartment number, mailbox number, staircase, floor, ...).
-    pub internal_delivery: Option<String>,
-    /// Additional information of the external delivery point
-    /// (Building, residence, entrance, ...).
-    pub external_delivery: Option<String>,
-    /// Route number and label.
-    pub street: Option<String>,
-    /// Additional distribution information (hamlet, postal box, ...).
-    pub distribution_info: Option<String>,
-    /// The postal code and locality destination.
-    pub postal: String,
-    /// The country name.
-    pub country: String
-}
-
-#[derive(Debug, PartialEq)]
-pub struct BusinessFrenchAddress {
-    /// The business name or trade name.
-    pub business_name: String,
-    /// Identity of the recipient and/or service
-    pub recipient: Option<String>,
-    /// Additional information of the external delivery point
-    /// (Building, residence, entrance, ...).
-    pub external_delivery: Option<String>,
-    /// Route number and label.
-    pub street: String,
-    /// Additional distribution information (BP, Sorting Arrival Department)
-    /// and the commune where the company is located if different from the CEDEX
-    /// distributor office.
-    pub distribution_info: Option<String>,
-    /// Postal code and destination locality. Or CEDEX code and CEDEX
-    /// distributor office.
-    pub postal: String,
-    /// The country name.
-    pub country: String
-}
-
-#[derive(Debug)]
-pub struct IsoPostalAddress {
-    /// <StrtNm>
-    pub street_name: Option<String>,
-    /// <BldgNb>
-    pub building_number: Option<String>,
-    /// <Flr>
-    pub floor: Option<String>,
-    /// <Room>
-    pub room: Option<String>,
-    /// <PstBx>
-    pub postbox: Option<String>,
-    /// <Dept>
-    pub department: Option<String>,
-    /// <PstCd>
     pub postcode: String,
-    /// <TwnNm>
-    pub town_name: String,
-    /// <TwnLctnNm>
-    pub town_location_name: Option<String>,
-    /// <Ctry> = "FR"
-    pub country: String,
+    /// The town of the postal address.
+    pub town: String,
+    /// Complementary town information for distribution.
+    pub town_location: Option<String>,
 }
 
 #[derive(Clone, Debug, strum_macros::Display, EnumString, PartialEq)]
@@ -183,170 +105,25 @@ impl Country {
     }
 }
 
-#[derive(Debug)]
-pub enum IsoAddress {
-    IndividualIsoAddress { name: String, iso_postal_address: IsoPostalAddress },
-    BusinessIsoAddress { org_id: String, iso_postal_address: IsoPostalAddress },
-}
-
-#[derive(Debug)]
-pub enum AddressConversionError {
-    MissingField(String),
-    InvalidFormat(String),
-}
-
-impl fmt::Display for AddressConversionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::MissingField(field) => write!(f, "Missing required field: {}", field),
-            Self::InvalidFormat(msg) => write!(f, "Invalid format: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for AddressConversionError {}
-
-/// A trait representing the conversion rules for any convertible address.
-pub trait AddressConvertible {
-    /// Convert the address into the french standard NF Z10-011.
-    fn to_french(&self) -> Result<FrenchAddress, AddressConversionError>;
-    /// Convert the address into the ISO 20022 standard.
-    fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError>;
-}
-
-// TODO if time: each value object should be validated based
-// on the spec information. Required fields and max length
-// should be covered. For now we juste have some examples to demonstrate
-// the ability to validate the domain.
-impl AddressConvertible for Address {
-    fn to_french(&self) -> Result<FrenchAddress, AddressConversionError> {
-        let distribution_info = || { 
-            self.delivery_point.as_ref()
-                .map_or_else(|| None, |delivery_point| {
-                    let (town_location, postbox) = (
-                        self.postal_details.town_location.clone(),
-                        delivery_point.postbox.clone()
-                    );
-
-                    match (town_location, postbox) {
-                        (None, None) => None,
-                        (Some(town_location), None) => Some(town_location),
-                        (None, Some(postbox)) => Some(postbox),
-                        (Some(town_location), Some(postbox)) => Some(format!("{town_location} {postbox}"))
-                    }
-                })
-        };
-
-        let postal_info = || {
-            format!("{} {}", self.postal_details.postcode, self.postal_details.town)
-        };
-
-        match &self.kind {
-            AddressKind::Individual => {
-                let name = match self.recipient.denomination() {
-                    Some(name) if !name.is_empty() => name,
-                    _ => return Err(AddressConversionError::MissingField("name".to_string()))
-                };
-
-                let internal_delivery = self.delivery_point.as_ref()
-                    .map_or_else(|| None, |delivery_point| delivery_point.internal.clone());
-
-                let external_delivery = self.delivery_point.as_ref()
-                    .map_or_else(|| None, |delivery_point| delivery_point.external.clone());
-
-                let mut street: String = self.street.name.clone();
-                if let Some(street_number) = &self.street.number {
-                    street = format!("{street_number} {street}");
-                }
-
-                let distribution_info = distribution_info();
-                let postal = postal_info();
-                
-                Ok(FrenchAddress::Individual(IndividualFrenchAddress {
-                    name,
-                    internal_delivery,
-                    external_delivery,
-                    street: Some(street),
-                    distribution_info,
-                    postal,
-                    country: self.country.to_string()
-                }))
-            }
-            AddressKind::Business => {
-                let business_name: String = match &self.recipient {
-                    Recipient::Business { company_name, .. } if !company_name.is_empty() => company_name.to_string(),
-                    _ => return Err(AddressConversionError::MissingField("company_name".to_string())),
-                };
-
-                let recipient = self.recipient.denomination()
-                    .map_or_else(|| None, |contact| Some(contact));
-
-                let external_delivery = self.delivery_point.as_ref()
-                    .map_or_else(|| None, |delivery_point| delivery_point.external.clone());
-
-                let mut street: String = self.street.name.clone();
-                if let Some(street_number) = &self.street.number {
-                    street = format!("{street_number} {street}");
-                };
-
-                let distribution_info = distribution_info();
-                let postal = postal_info();
-
-                Ok(FrenchAddress::Business(BusinessFrenchAddress {
-                    business_name,
-                    recipient,
-                    external_delivery,
-                    street,
-                    distribution_info,
-                    postal,
-                    country: self.country.to_string()
-                }))
-
-            }
-        }
-    }
-
-    fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError> {
-        let mut iso_postal_address = IsoPostalAddress {
-            street_name: Some(self.street.name.clone()),
-            building_number: self.street.number.clone(),
-            floor: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.external.clone()),
-            room: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.internal.clone()),
-            postbox: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.postbox.clone()),
-            department: None,
-            postcode: self.postal_details.postcode.clone(),
-            town_name: self.postal_details.town.clone(),
-            town_location_name: self.postal_details.town_location.clone(),
-            country: self.country.iso_code().to_string(),
-        };
-
-        match &self.kind {
-            AddressKind::Individual => {
-                let name = match &self.recipient {
-                    Recipient::Individual { name } if !name.is_empty() => name.clone(),
-                    _ => return Err(AddressConversionError::MissingField("name".to_string())),
-                };
-                Ok(IsoAddress::IndividualIsoAddress { name, iso_postal_address })
-            }
-            AddressKind::Business => {
-                let org_id = match &self.recipient {
-                    Recipient::Business { company_name, .. } if !company_name.is_empty() => company_name.clone(),
-                    _ => return Err(AddressConversionError::MissingField("company_name".to_string())),
-                };
-                iso_postal_address.department = self.recipient.denomination();
-
-                Ok(IsoAddress::BusinessIsoAddress { org_id, iso_postal_address })
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 pub mod tests {
     use crate::domain::address::*;
+    use crate::domain::address_conversion::AddressConvertible;
+    use crate::domain::french_address::*;
+    use std::str::FromStr;
 
     #[test]
-    fn full_individual_french_address_to_domain() {
+    fn it_should_parse_country() {
+        assert_eq!(Country::from_str("france"), Ok(Country::France));
+        assert_eq!(Country::from_str("FRANCE"), Ok(Country::France));
+        assert_eq!(Country::from_str("fr"), Ok(Country::France));
+        assert_eq!(Country::from_str("FR"), Ok(Country::France));
+        assert_eq!(Country::France.to_string(), "FRANCE");
+        assert_eq!(Country::France.iso_code(), "FR");
+    }
+
+    #[test]
+    fn full_individual_address_to_french() {
         use crate::domain::address::{AddressKind, DeliveryPoint, PostalDetails, Recipient, Street};
 
         let recipient = Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() };

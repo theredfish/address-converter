@@ -1,5 +1,5 @@
-/// This is just an example file to demonstrate the case  
-/// of an API binary.
+//! This is just an example file to demonstrate the case  
+//! of an API binary.
 
 fn main() {
     println!("API entrypoint");
