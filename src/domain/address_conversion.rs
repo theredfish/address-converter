@@ -137,7 +137,7 @@ impl AddressConvertible for Address {
 
     fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError> {
         let mut iso_address = IsoPostalAddress {
-            street_name: self.street.as_ref().and_then(|street| Some(street.name.clone())),
+            street_name: self.street.as_ref().map(|street| street.name.clone()),
             building_number: self.street.as_ref().and_then(|street| street.number.clone()),
             floor: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.external.clone()),
             room: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.internal.clone()),

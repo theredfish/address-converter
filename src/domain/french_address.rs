@@ -75,7 +75,7 @@ impl FrenchAddressParser {
         if street.is_empty() {
             return Err(AddressConversionError::InvalidFormat("Street cannot be empty".to_string()));
         }
-        if let Some(caps) = STREET_REGEX.captures(&street) {
+        if let Some(caps) = STREET_REGEX.captures(street) {
             let number = caps.get(1).map(|m| m.as_str().to_string());
             let name = caps.get(2).map_or("".to_string(), |m| m.as_str().to_string());
             if name.is_empty() {
@@ -89,7 +89,7 @@ impl FrenchAddressParser {
     }
 
     pub fn parse_postal(postal: &str) -> Result<PostalDetails, AddressConversionError> {
-        const POSTAL_ERROR: &'static str = "Postal information should contain a postcode/zipcode and a town (e.g., '44000 NANTES')";
+        const POSTAL_ERROR: &str = "Postal information should contain a postcode/zipcode and a town (e.g., '44000 NANTES')";
 
         if let Some(caps) = POSTAL_REGEX.captures(postal) {
             let postcode = caps.get(1)
