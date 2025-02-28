@@ -20,12 +20,37 @@ pub struct Address {
     /// postbox.
     pub delivery_point: Option<DeliveryPoint>,
     /// The street address information.
-    pub street: Street,
+    pub street: Option<Street>,
     /// The postal details such as the postcode (or zipcode), town and extra
     /// location information.
     pub postal_details: PostalDetails,
     /// The address country.
     pub country: Country,
+}
+
+impl Address {
+    pub fn new(
+        kind: AddressKind,
+        recipient: Recipient,
+        delivery_point: Option<DeliveryPoint>,
+        street: Option<Street>,
+        postal_details: PostalDetails,
+        country: Country
+    ) -> Self {
+        let id = Uuid::new_v4();
+        let updated_at = Utc::now();
+
+        Address { 
+            id,
+            updated_at,
+            kind,
+            recipient,
+            delivery_point,
+            street,
+            postal_details,
+            country 
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -122,47 +147,266 @@ pub mod tests {
         assert_eq!(Country::France.iso_code(), "FR");
     }
 
-    #[test]
-    fn full_individual_address_to_french() {
-        use crate::domain::address::{AddressKind, DeliveryPoint, PostalDetails, Recipient, Street};
+    mod individual_tests {
+        use crate::domain::iso20022_address::{IsoAddress, IsoPostalAddress};
+        use super::*;
 
-        let recipient = Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() };
-        let delivery_point = Some(DeliveryPoint {
-            internal: Some("Chez Mireille COPEAU Appartement 2".to_string()),
-            external: Some("Entrée A Bâtiment Jonquille".to_string()),
-            postbox: Some("CAUDOS".to_string()),
-        });
-        let street = Street {
-            number: Some("25".to_string()),
-            name: "RUE DE L'EGLISE".to_string(),
-        };
-        let postal_details = PostalDetails {
-            postcode: "33380".to_string(),
-            town: "MIOS".to_string(),
-            town_location: None,
-        };
-        let address = Address {
-            id: Uuid::new_v4(),
-            updated_at: Utc::now(),
-            kind: AddressKind::Individual,
-            recipient,
-            delivery_point,
-            street,
-            postal_details,
-            country: Country::France,
-        };
+        #[test]
+        fn full_individual_to_french() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Individual,
+                recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
+                delivery_point: Some(DeliveryPoint {
+                    internal: Some("Chez Mireille COPEAU Appartement 2".to_string()),
+                    external: Some("Entrée A Bâtiment Jonquille".to_string()),
+                    postbox: Some("CAUDOS".to_string()),
+                }),
+                street: Some(Street {
+                    number: Some("25".to_string()),
+                    name: "RUE DE L’EGLISE".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "33380".to_string(),
+                    town: "MIOS".to_string(),
+                    town_location: None,
+                },
+                country: Country::France,
+            };
 
-        let expected_french_address = FrenchAddress::Individual(IndividualFrenchAddress {
-            name: "Monsieur Jean DELHOURME".to_string(),
-            internal_delivery: Some("Chez Mireille COPEAU Appartement 2".to_string()),
-            external_delivery: Some("Entrée A Bâtiment Jonquille".to_string()),
-            street: Some("25 RUE DE L'EGLISE".to_string()),
-            distribution_info: Some("CAUDOS".to_string()),
-            postal: "33380 MIOS".to_string(),
-            country: "FRANCE".to_string(),
-        });
+            let expected = FrenchAddress::Individual(IndividualFrenchAddress {
+                name: "Monsieur Jean DELHOURME".to_string(),
+                internal_delivery: Some("Chez Mireille COPEAU Appartement 2".to_string()),
+                external_delivery: Some("Entrée A Bâtiment Jonquille".to_string()),
+                street: Some("25 RUE DE L’EGLISE".to_string()),
+                distribution_info: Some("CAUDOS".to_string()),
+                postal: "33380 MIOS".to_string(),
+                country: "FRANCE".to_string(),
+            });
 
-        assert!(address.to_french().is_ok());
-        assert_eq!(address.to_french().unwrap(), expected_french_address);
+            assert!(address.to_french().is_ok());
+            assert_eq!(address.to_french().unwrap(), expected);
+        }
+
+        #[test]
+        fn full_individual_to_iso20022() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Individual,
+                recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
+                delivery_point: Some(DeliveryPoint {
+                    internal: Some("Chez Mireille COPEAU Appartement 2".to_string()),
+                    external: Some("Entrée A Bâtiment Jonquille".to_string()),
+                    postbox: Some("CAUDOS".to_string()),
+                }),
+                street: Some(Street {
+                    number: Some("25".to_string()),
+                    name: "RUE DE L’EGLISE".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "33380".to_string(),
+                    town: "MIOS".to_string(),
+                    town_location: None,
+                },
+                country: Country::France,
+            };
+
+            let expected = IsoAddress::IndividualIsoAddress {
+                name: "Monsieur Jean DELHOURME".to_string(),
+                iso_address: IsoPostalAddress {
+                    street_name: Some("RUE DE L’EGLISE".to_string()),
+                    building_number: Some("25".to_string()),
+                    floor: Some("Entrée A Bâtiment Jonquille".to_string()),
+                    room: Some("Chez Mireille COPEAU Appartement 2".to_string()),
+                    postbox: Some("CAUDOS".to_string()),
+                    department: None,
+                    postcode: "33380".to_string(),
+                    town_name: "MIOS".to_string(),
+                    town_location_name: None,
+                    country: "FR".to_string(),
+                },
+            };
+
+            assert!(address.to_iso20022().is_ok());
+            assert_eq!(address.to_iso20022().unwrap(), expected);
+        }
+
+        #[test]
+        fn minimal_individual_to_french() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Individual,
+                recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
+                delivery_point: Some(DeliveryPoint {
+                    internal: None,
+                    external: Some("VILLA BEAU SOLEIL".to_string()),
+                    postbox: None,
+                }),
+                street: Some(Street {
+                    number: None,
+                    name: "LE VILLAGE".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "82500".to_string(),
+                    town: "AUTERIVE".to_string(),
+                    town_location: None,
+                },
+                country: Country::France,
+            };
+
+            let expected = FrenchAddress::Individual(IndividualFrenchAddress {
+                name: "Madame Isabelle RICHARD".to_string(),
+                internal_delivery: None,
+                external_delivery: Some("VILLA BEAU SOLEIL".to_string()),
+                street: Some("LE VILLAGE".to_string()),
+                distribution_info: None,
+                postal: "82500 AUTERIVE".to_string(),
+                country: "FRANCE".to_string(),
+            });
+
+            assert!(address.to_french().is_ok());
+            assert_eq!(address.to_french().unwrap(), expected);
+        }
+
+        #[test]
+        fn minimal_individual_to_iso20022() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Individual,
+                recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
+                delivery_point: Some(DeliveryPoint {
+                    internal: None,
+                    external: Some("VILLA BEAU SOLEIL".to_string()),
+                    postbox: None,
+                }),
+                street: Some(Street {
+                    number: None,
+                    name: "LE VILLAGE".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "82500".to_string(),
+                    town: "AUTERIVE".to_string(),
+                    town_location: None,
+                },
+                country: Country::France,
+            };
+
+            let expected = IsoAddress::IndividualIsoAddress {
+                name: "Madame Isabelle RICHARD".to_string(),
+                iso_address: IsoPostalAddress {
+                    street_name: Some("LE VILLAGE".to_string()),
+                    building_number: None,
+                    floor: Some("VILLA BEAU SOLEIL".to_string()),
+                    room: None,
+                    postbox: None,
+                    department: None,
+                    postcode: "82500".to_string(),
+                    town_name: "AUTERIVE".to_string(),
+                    town_location_name: None,
+                    country: "FR".to_string(),
+                },
+            };
+
+            assert!(address.to_iso20022().is_ok());
+            assert_eq!(address.to_iso20022().unwrap(), expected);
+        }
+    }
+
+    mod business_tests {
+        use crate::domain::iso20022_address::{IsoAddress, IsoPostalAddress};
+
+        use super::*;
+
+        #[test]
+        fn business_to_french() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Business,
+                recipient: Recipient::Business { 
+                    company_name: "Société DUPONT".to_string(),
+                    contact: Some("Mademoiselle Lucie MARTIN".to_string()),
+                },
+                delivery_point: Some(DeliveryPoint {
+                    internal: None,
+                    external: Some("Résidence des Capucins Bâtiment Quater".to_string()),
+                    postbox: Some("BP 90432".to_string()),
+                }),
+                street: Some(Street {
+                    number: Some("56".to_string()),
+                    name: "RUE EMILE ZOLA".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "34092".to_string(),
+                    town: "MONTPELLIER CEDEX 5".to_string(),
+                    town_location: Some("MONTFERRIER SUR LEZ".to_string()),
+                },
+                country: Country::France,
+            };
+
+            let expected = FrenchAddress::Business(BusinessFrenchAddress {
+                business_name: "Société DUPONT".to_string(),
+                recipient: Some("Mademoiselle Lucie MARTIN".to_string()),
+                external_delivery: Some("Résidence des Capucins Bâtiment Quater".to_string()),
+                street: "56 RUE EMILE ZOLA".to_string(),
+                distribution_info: Some("BP 90432 MONTFERRIER SUR LEZ".to_string()),
+                postal: "34092 MONTPELLIER CEDEX 5".to_string(),
+                country: "FRANCE".to_string(),
+            });
+
+            assert!(address.to_french().is_ok());
+            assert_eq!(address.to_french().unwrap(), expected);
+        }
+
+        #[test]
+        fn business_to_iso20022() {
+            let address = Address {
+                id: Uuid::new_v4(),
+                updated_at: Utc::now(),
+                kind: AddressKind::Business,
+                recipient: Recipient::Business { 
+                    company_name: "Société DUPONT".to_string(),
+                    contact: Some("Mademoiselle Lucie MARTIN".to_string()),
+                },
+                delivery_point: Some(DeliveryPoint {
+                    internal: None,
+                    external: Some("Résidence des Capucins Bâtiment Quater".to_string()),
+                    postbox: Some("BP 90432".to_string()),
+                }),
+                street: Some(Street {
+                    number: Some("56".to_string()),
+                    name: "RUE EMILE ZOLA".to_string(),
+                }),
+                postal_details: PostalDetails {
+                    postcode: "34092".to_string(),
+                    town: "MONTPELLIER CEDEX 5".to_string(),
+                    town_location: Some("MONTFERRIER SUR LEZ".to_string()),
+                },
+                country: Country::France,
+            };
+
+            let expected = IsoAddress::BusinessIsoAddress {
+                company_name: "Société DUPONT".to_string(),
+                iso_address: IsoPostalAddress {
+                    street_name: Some("RUE EMILE ZOLA".to_string()),
+                    building_number: Some("56".to_string()),
+                    floor: Some("Résidence des Capucins Bâtiment Quater".to_string()),
+                    room: None,
+                    postbox: Some("BP 90432".to_string()),
+                    department: Some("Mademoiselle Lucie MARTIN".to_string()),
+                    postcode: "34092".to_string(),
+                    town_name: "MONTPELLIER CEDEX 5".to_string(),
+                    town_location_name: Some("MONTFERRIER SUR LEZ".to_string()),
+                    country: "FR".to_string(),
+                },
+            };
+
+            assert!(address.to_iso20022().is_ok());
+            assert_eq!(address.to_iso20022().unwrap(), expected);
+        }
     }
 }

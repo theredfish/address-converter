@@ -1,10 +1,10 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum IsoAddress {
-    IndividualIsoAddress { name: String, iso_postal_address: IsoPostalAddress },
-    BusinessIsoAddress { org_id: String, iso_postal_address: IsoPostalAddress },
+    IndividualIsoAddress { name: String, iso_address: IsoPostalAddress },
+    BusinessIsoAddress { company_name: String, iso_address: IsoPostalAddress },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct IsoPostalAddress {
     /// <StrtNm>
     pub street_name: Option<String>,

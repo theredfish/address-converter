@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use super::address::*;
 use super::french_address::*;
@@ -21,12 +22,15 @@ impl fmt::Display for AddressConversionError {
 
 impl std::error::Error for AddressConversionError {}
 
-
 /// A trait representing the conversion rules for any convertible address.
 pub trait AddressConvertible {
-    /// Convert the address into the french standard NF Z10-011.
+    /// Converts a NF Z10-011 french address into a new Address entity.
+    fn from_french(address: FrenchAddress) -> Result<Self, AddressConversionError> where Self: Sized;
+    /// Converts an ISO 20022 address into a new Address entity.
+    fn from_iso20022(address: IsoAddress) -> Result<Self, AddressConversionError> where Self: Sized;
+    /// Converts the address into the french standard NF Z10-011.
     fn to_french(&self) -> Result<FrenchAddress, AddressConversionError>;
-    /// Convert the address into the ISO 20022 standard.
+    /// Converts the address into the ISO 20022 standard.
     fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError>;
 }
 
@@ -44,11 +48,11 @@ impl AddressConvertible for Address {
                         delivery_point.postbox.clone()
                     );
 
-                    match (town_location, postbox) {
+                    match (postbox, town_location) {
                         (None, None) => None,
-                        (Some(town_location), None) => Some(town_location),
-                        (None, Some(postbox)) => Some(postbox),
-                        (Some(town_location), Some(postbox)) => Some(format!("{town_location} {postbox}"))
+                        (None, Some(town_location)) => Some(town_location),
+                        (Some(postbox), None) => Some(postbox),
+                        (Some(postbox), Some(town_location)) => Some(format!("{postbox} {town_location}"))
                     }
                 })
         };
@@ -70,10 +74,13 @@ impl AddressConvertible for Address {
                 let external_delivery = self.delivery_point.as_ref()
                     .map_or_else(|| None, |delivery_point| delivery_point.external.clone());
 
-                let mut street: String = self.street.name.clone();
-                if let Some(street_number) = &self.street.number {
-                    street = format!("{street_number} {street}");
-                }
+                let street = self.street.as_ref()
+                    .map(|street| {
+                        match (street.number.clone(), street.name.clone()) {
+                            (Some(number), name) => format!("{number} {name}"),
+                            (None, name) => name
+                        }                    
+                    });
 
                 let distribution_info = distribution_info();
                 let postal = postal_info();
@@ -82,7 +89,7 @@ impl AddressConvertible for Address {
                     name,
                     internal_delivery,
                     external_delivery,
-                    street: Some(street),
+                    street,
                     distribution_info,
                     postal,
                     country: self.country.to_string()
@@ -100,10 +107,16 @@ impl AddressConvertible for Address {
                 let external_delivery = self.delivery_point.as_ref()
                     .map_or_else(|| None, |delivery_point| delivery_point.external.clone());
 
-                let mut street: String = self.street.name.clone();
-                if let Some(street_number) = &self.street.number {
-                    street = format!("{street_number} {street}");
-                };
+                // For the moment it has been decided that businesses should have
+                // a street line information.
+                let street = self.street.as_ref()
+                    .map(|street| {
+                        match (street.number.clone(), street.name.clone()) {
+                            (Some(number), name) => format!("{number} {name}"),
+                            (None, name) => name
+                        }                    
+                })
+                .ok_or(AddressConversionError::MissingField("Street information is required for french business addresses".to_string()))?;
 
                 let distribution_info = distribution_info();
                 let postal = postal_info();
@@ -123,9 +136,9 @@ impl AddressConvertible for Address {
     }
 
     fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError> {
-        let mut iso_postal_address = IsoPostalAddress {
-            street_name: Some(self.street.name.clone()),
-            building_number: self.street.number.clone(),
+        let mut iso_address = IsoPostalAddress {
+            street_name: self.street.as_ref().and_then(|street| Some(street.name.clone())),
+            building_number: self.street.as_ref().and_then(|street| street.number.clone()),
             floor: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.external.clone()),
             room: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.internal.clone()),
             postbox: self.delivery_point.as_ref().and_then(|delivery_point| delivery_point.postbox.clone()),
@@ -142,16 +155,154 @@ impl AddressConvertible for Address {
                     Recipient::Individual { name } if !name.is_empty() => name.clone(),
                     _ => return Err(AddressConversionError::MissingField("name".to_string())),
                 };
-                Ok(IsoAddress::IndividualIsoAddress { name, iso_postal_address })
+                Ok(IsoAddress::IndividualIsoAddress { name, iso_address })
             }
             AddressKind::Business => {
                 let org_id = match &self.recipient {
                     Recipient::Business { company_name, .. } if !company_name.is_empty() => company_name.clone(),
                     _ => return Err(AddressConversionError::MissingField("company_name".to_string())),
                 };
-                iso_postal_address.department = self.recipient.denomination();
+                iso_address.department = self.recipient.denomination();
 
-                Ok(IsoAddress::BusinessIsoAddress { org_id, iso_postal_address })
+                Ok(IsoAddress::BusinessIsoAddress { company_name: org_id, iso_address })
+            }
+        }
+    }
+    
+    fn from_french(address: FrenchAddress) -> Result<Self, AddressConversionError> where Self: Sized {
+        match address {
+            FrenchAddress::Individual(individual) => {
+                let street = match individual.street {
+                    Some(street) => Some(FrenchAddressParser::parse_street(&street)?),
+                    None => None
+                };
+
+                let postal = FrenchAddressParser::parse_postal(&individual.postal)?;
+
+                let individual_delivery = (
+                    individual.external_delivery,
+                    individual.internal_delivery,
+                    individual.distribution_info
+                );
+                let delivery_point = match individual_delivery {
+                    (None, None, None) => None,
+                    _ => Some(DeliveryPoint {
+                        external: individual_delivery.0,
+                        internal: individual_delivery.1,
+                        postbox: individual_delivery.2
+                    })
+                };
+                let country = Country::from_str(&individual.country)
+                    .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
+
+                let individual_address = Address::new(
+                    AddressKind::Individual,
+                    Recipient::Individual { name: individual.name },
+                    delivery_point,
+                    street,
+                    postal,
+                    country
+                );
+
+                Ok(individual_address)
+
+            },
+            FrenchAddress::Business(business) => {
+                let street = Some(FrenchAddressParser::parse_street(&business.street)?);
+                let mut postal = FrenchAddressParser::parse_postal(&business.postal)?;
+                
+                let postbox = business.distribution_info.as_ref()
+                    .map(|info| FrenchAddressParser::parse_postbox(info))
+                    .transpose()?
+                    .flatten();
+                let town_location = business.distribution_info.as_ref()
+                    .map(|info| FrenchAddressParser::parse_town_location(info))
+                    .transpose()?
+                    .flatten();
+
+                postal.town_location = town_location;
+
+                let address = Address::new(
+                    AddressKind::Business,
+                    Recipient::Business { 
+                        company_name: business.business_name, 
+                        contact: business.recipient 
+                    },
+                    Some(DeliveryPoint {
+                        external: business.external_delivery,
+                        internal: None,
+                        postbox,
+                    }),
+                    street,
+                    postal,
+                    Country::France,
+                );
+
+                Ok(address)
+            }
+        }
+    }
+    
+    fn from_iso20022(address: IsoAddress) -> Result<Self, AddressConversionError> where Self: Sized {
+        match address {
+            IsoAddress::IndividualIsoAddress { name, iso_address } => {
+                let street_name = match iso_address.street_name {
+                    Some(name) if !name.is_empty() => name,
+                    _ => return Err(AddressConversionError::MissingField("street_name".to_string()))
+                };
+                let country = Country::from_str(&iso_address.country)
+                    .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
+
+                let address = Address::new(
+                    AddressKind::Individual,
+                    Recipient::Individual { name },
+                    Some(DeliveryPoint {
+                        external: iso_address.floor,
+                        internal: iso_address.room,
+                        postbox: iso_address.postbox,
+                    }),
+                    Some(Street {
+                        number: iso_address.building_number,
+                        name: street_name,
+                    }),
+                    PostalDetails {
+                        postcode: iso_address.postcode,
+                        town: iso_address.town_name,
+                        town_location: iso_address.town_location_name,
+                    },
+                    country
+                );
+
+                Ok(address)
+            }
+            IsoAddress::BusinessIsoAddress { company_name, iso_address } => {
+                let country = Country::from_str(&iso_address.country)
+                    .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
+
+                let address = Address::new(
+                    AddressKind::Business,
+                    Recipient::Business { 
+                        company_name,
+                        contact: iso_address.department,
+                    },
+                    Some(DeliveryPoint {
+                        external: iso_address.floor,
+                        internal: None,
+                        postbox: iso_address.postbox,
+                    }),
+                    Some(Street {
+                        number: iso_address.building_number,
+                        name: iso_address.street_name.unwrap_or_default(),
+                    }),
+                    PostalDetails {
+                        postcode: iso_address.postcode,
+                        town: iso_address.town_name,
+                        town_location: iso_address.town_location_name,
+                    },
+                    country
+                );
+
+                Ok(address)
             }
         }
     }
