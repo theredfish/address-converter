@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum IsoAddress {
-    IndividualIsoAddress { name: String, iso_address: IsoPostalAddress },
-    BusinessIsoAddress { company_name: String, iso_address: IsoPostalAddress },
+    IndividualIsoAddress { name: String, postal_address: IsoPostalAddress },
+    BusinessIsoAddress { company_name: String, postal_address: IsoPostalAddress },
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

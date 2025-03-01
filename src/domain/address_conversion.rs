@@ -155,7 +155,7 @@ impl AddressConvertible for Address {
                     Recipient::Individual { name } if !name.is_empty() => name.clone(),
                     _ => return Err(AddressConversionError::MissingField("name".to_string())),
                 };
-                Ok(IsoAddress::IndividualIsoAddress { name, iso_address })
+                Ok(IsoAddress::IndividualIsoAddress { name, postal_address: iso_address })
             }
             AddressKind::Business => {
                 let org_id = match &self.recipient {
@@ -164,7 +164,7 @@ impl AddressConvertible for Address {
                 };
                 iso_address.department = self.recipient.denomination();
 
-                Ok(IsoAddress::BusinessIsoAddress { company_name: org_id, iso_address })
+                Ok(IsoAddress::BusinessIsoAddress { company_name: org_id, postal_address: iso_address })
             }
         }
     }
@@ -245,7 +245,7 @@ impl AddressConvertible for Address {
     
     fn from_iso20022(address: IsoAddress) -> Result<Self, AddressConversionError> where Self: Sized {
         match address {
-            IsoAddress::IndividualIsoAddress { name, iso_address } => {
+            IsoAddress::IndividualIsoAddress { name, postal_address: iso_address } => {
                 let street_name = match iso_address.street_name {
                     Some(name) if !name.is_empty() => name,
                     _ => return Err(AddressConversionError::MissingField("street_name".to_string()))
@@ -275,7 +275,7 @@ impl AddressConvertible for Address {
 
                 Ok(address)
             }
-            IsoAddress::BusinessIsoAddress { company_name, iso_address } => {
+            IsoAddress::BusinessIsoAddress { company_name, postal_address: iso_address } => {
                 let country = Country::from_str(&iso_address.country)
                     .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
 

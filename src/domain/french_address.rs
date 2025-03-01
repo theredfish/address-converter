@@ -19,6 +19,7 @@ static POSTBOX_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]{2}\s+\d+").
 static TOWN_LOCATION_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(?:[A-Z]{2}\s+\d+\s+)?(.+)$").unwrap());
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum FrenchAddress {
     /// An individual french address.
     Individual(IndividualFrenchAddress),

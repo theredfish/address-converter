@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use strum::EnumString;
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Address {
     /// The unique identifier of the address.
     pub id: Uuid,
@@ -53,13 +53,13 @@ impl Address {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AddressKind {
     Individual,
     Business,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Recipient {
     /// An individual recipient (M. John Doe, Mirabelle Prune)
     Individual { name: String },
@@ -87,7 +87,7 @@ impl Recipient {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DeliveryPoint {
     /// The external delivery point (building, entry, ...).
     pub external: Option<String>,
@@ -97,15 +97,15 @@ pub struct DeliveryPoint {
     pub postbox: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Street {
     /// The street number (2, 2BIS, 2D).
     pub number: Option<String>,
-    /// The street name ("LE VILLAGE", "RUE DE L’EGLISE").
+    /// The street name ("LE VILLAGE", "RUE DE L'EGLISE").
     pub name: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PostalDetails {
     /// The zipcode or postcode of the postal address (56000, K1A 0A6)
     pub postcode: String,
@@ -165,7 +165,7 @@ pub mod tests {
                 }),
                 street: Some(Street {
                     number: Some("25".to_string()),
-                    name: "RUE DE L’EGLISE".to_string(),
+                    name: "RUE DE L'EGLISE".to_string(),
                 }),
                 postal_details: PostalDetails {
                     postcode: "33380".to_string(),
@@ -179,7 +179,7 @@ pub mod tests {
                 name: "Monsieur Jean DELHOURME".to_string(),
                 internal_delivery: Some("Chez Mireille COPEAU Appartement 2".to_string()),
                 external_delivery: Some("Entrée A Bâtiment Jonquille".to_string()),
-                street: Some("25 RUE DE L’EGLISE".to_string()),
+                street: Some("25 RUE DE L'EGLISE".to_string()),
                 distribution_info: Some("CAUDOS".to_string()),
                 postal: "33380 MIOS".to_string(),
                 country: "FRANCE".to_string(),
@@ -203,7 +203,7 @@ pub mod tests {
                 }),
                 street: Some(Street {
                     number: Some("25".to_string()),
-                    name: "RUE DE L’EGLISE".to_string(),
+                    name: "RUE DE L'EGLISE".to_string(),
                 }),
                 postal_details: PostalDetails {
                     postcode: "33380".to_string(),
@@ -215,8 +215,8 @@ pub mod tests {
 
             let expected = IsoAddress::IndividualIsoAddress {
                 name: "Monsieur Jean DELHOURME".to_string(),
-                iso_address: IsoPostalAddress {
-                    street_name: Some("RUE DE L’EGLISE".to_string()),
+                postal_address: IsoPostalAddress {
+                    street_name: Some("RUE DE L'EGLISE".to_string()),
                     building_number: Some("25".to_string()),
                     floor: Some("Entrée A Bâtiment Jonquille".to_string()),
                     room: Some("Chez Mireille COPEAU Appartement 2".to_string()),
@@ -297,7 +297,7 @@ pub mod tests {
 
             let expected = IsoAddress::IndividualIsoAddress {
                 name: "Madame Isabelle RICHARD".to_string(),
-                iso_address: IsoPostalAddress {
+                postal_address: IsoPostalAddress {
                     street_name: Some("LE VILLAGE".to_string()),
                     building_number: None,
                     floor: Some("VILLA BEAU SOLEIL".to_string()),
@@ -391,7 +391,7 @@ pub mod tests {
 
             let expected = IsoAddress::BusinessIsoAddress {
                 company_name: "Société DUPONT".to_string(),
-                iso_address: IsoPostalAddress {
+                postal_address: IsoPostalAddress {
                     street_name: Some("RUE EMILE ZOLA".to_string()),
                     building_number: Some("56".to_string()),
                     floor: Some("Résidence des Capucins Bâtiment Quater".to_string()),
