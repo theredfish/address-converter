@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::domain::address::Address;
+use crate::domain::Address;
 use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ impl AddressRepository for InMemoryAddressRepository {
         }
 
         addresses.insert(id.to_string(), addr);
-        
+
         Ok(id)
     }
 

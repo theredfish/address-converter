@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use strum::EnumString;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Address {
     /// The unique identifier of the address.
     id: Uuid,
@@ -135,13 +136,13 @@ impl ConvertedAddress {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum AddressKind {
     Individual,
     Business,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Recipient {
     /// An individual recipient (M. John Doe, Mirabelle Prune)
     Individual { name: String },
@@ -169,7 +170,7 @@ impl Recipient {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DeliveryPoint {
     /// The external delivery point (building, entry, ...).
     pub external: Option<String>,
@@ -179,7 +180,7 @@ pub struct DeliveryPoint {
     pub postbox: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Street {
     /// The street number (2, 2BIS, 2D).
     pub number: Option<String>,
@@ -187,7 +188,7 @@ pub struct Street {
     pub name: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PostalDetails {
     /// The zipcode or postcode of the postal address (56000, K1A 0A6)
     pub postcode: String,
@@ -197,7 +198,7 @@ pub struct PostalDetails {
     pub town_location: Option<String>,
 }
 
-#[derive(Clone, Debug, strum_macros::Display, EnumString, PartialEq)]
+#[derive(Clone, Debug, strum_macros::Display, EnumString, PartialEq, Serialize, Deserialize)]
 #[strum(serialize_all = "UPPERCASE", ascii_case_insensitive)]
 pub enum Country {
     #[strum(serialize = "FRANCE", serialize = "FR")]

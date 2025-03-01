@@ -1,10 +1,6 @@
 use thiserror::Error;
 
-use crate::domain::Uuid;
-use crate::domain::address::{Address, ConvertedAddress};
-use crate::domain::address_conversion::*;
-use crate::domain::french_address::FrenchAddress;
-use crate::domain::iso20022_address::IsoAddress;
+use crate::domain::*;
 use crate::domain::repositories::{AddressRepositoryError, AddressRepository};
 
 #[derive(Error, Debug)]
@@ -130,6 +126,15 @@ impl AddressService {
         Ok(addr)
     }
 
+    pub fn fetch_format(&self, id: &str, format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
+        let addr = self.fetch(id)?;
+        let converted = addr.as_converted_address();
+        match format {
+            Format::French => Ok(Either::French(converted.to_french()?)),
+            Format::Iso20022 => Ok(Either::Iso20022(converted.to_iso20022()?)),
+        }
+    }
+
     pub fn delete(&self, id: &str) -> ServiceResult<()> {
         self.repository.delete(id)?;
 
@@ -143,8 +148,7 @@ pub mod tests {
 
     use crate::application::service::Either;
     use crate::application::service::Format;
-    use crate::domain::french_address::*;
-    use crate::domain::iso20022_address::*;
+    use crate::domain::*;
     use crate::domain::repositories::AddressRepositoryError;
     use crate::infrastructure::InMemoryAddressRepository;
     use super::ServiceResult;

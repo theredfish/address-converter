@@ -9,6 +9,12 @@ pub enum AddressRepositoryError {
     NotFound(String),
     #[error("Resource already exists: `{0}`")]
     AlreadyExists(String),
+    #[error("Invalid uuid")]
+    InvalidUuid(#[from] uuid::Error),
+    #[error("Underlying I/O operation failed")]
+    IOFailure(#[from] std::io::Error),
+    #[error("Underlying serialization or deserialization operation failed")]
+    SerializationFailure(#[from] serde_json::Error)
 }
 
 /// Short hand for `Result` type.
