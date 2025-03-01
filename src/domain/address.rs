@@ -54,6 +54,17 @@ impl Address {
         }
     }
 
+    pub fn as_converted_address(&self) -> ConvertedAddress {
+        ConvertedAddress {
+            kind: self.kind.clone(),
+            recipient: self.recipient.clone(),
+            delivery_point: self.delivery_point.clone(),
+            street: self.street.clone(),
+            postal_details: self.postal_details.clone(),
+            country: self.country.clone(),
+        }
+    }
+
     pub fn update(&mut self, update: ConvertedAddress) {
         self.updated_at = Utc::now();
 

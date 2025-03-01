@@ -104,7 +104,7 @@ impl AddressService {
         Ok(())
     }
 
-    pub fn update(&self, input: &str, from_format: Format, id: &str) -> ServiceResult<()> {
+    pub fn update(&self, id: &str, input: &str, from_format: Format) -> ServiceResult<()> {
         let converted_addr = match from_format {
             Format::French => {
                 let french: FrenchAddress = serde_json::from_str(input)?;
@@ -122,6 +122,16 @@ impl AddressService {
         self.repository.update(fetched_addr)?;
 
         Ok(())
+    }
+
+    pub fn fetch(&self, id: &str, conversion_format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
+        let addr = self.repository.fetch(id)?;
+        let converted = addr.as_converted_address();
+
+        match conversion_format {
+            Format::French => Ok(Either::French(converted.to_french()?)),
+            Format::Iso20022 => Ok(Either::Iso20022(converted.to_iso20022()?)),
+        }
     }
 }
 
