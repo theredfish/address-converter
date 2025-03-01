@@ -53,6 +53,26 @@ impl Address {
             country 
         }
     }
+
+    pub fn update(&mut self, update: ConvertedAddress) {
+        self.updated_at = Utc::now();
+
+        let ConvertedAddress {
+            kind,
+            recipient,
+            delivery_point,
+            street,
+            postal_details,
+            country
+        } = update;
+
+        self.kind = kind;
+        self.recipient = recipient;
+        self.delivery_point = delivery_point;
+        self.street = street;
+        self.postal_details = postal_details;
+        self.country = country;
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
