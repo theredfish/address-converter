@@ -5,10 +5,10 @@ use uuid::Uuid;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Address {
     /// The unique identifier of the address.
-    pub id: Uuid,
+    id: Uuid,
     /// Datetime in UTC of the last modification. Both creation and update dates
     /// are tracked with this field.
-    pub updated_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
     /// The type of address. Can be an individual or a business. This
     /// information is used for specific conversion rules depending on the type.
     pub kind: AddressKind,
@@ -52,6 +52,14 @@ impl Address {
             postal_details,
             country 
         }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub fn updated_at(&self) -> DateTime<Utc> {
+        self.updated_at
     }
 
     pub fn as_converted_address(&self) -> ConvertedAddress {

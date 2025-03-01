@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 use super::address::Address;
 
@@ -14,7 +15,7 @@ pub enum AddressRepositoryError {
 pub type RepositoryResult<T> = std::result::Result<T, AddressRepositoryError>;
 
 pub trait AddressRepository {
-    fn save(&self, addr: Address) -> RepositoryResult<()>;
+    fn save(&self, addr: Address) -> RepositoryResult<Uuid>;
     fn fetch(&self, id: &str) -> RepositoryResult<Address>;
     fn update(&self, addr: Address) -> RepositoryResult<()>;
     fn delete(&self, id: &str) -> RepositoryResult<()>;

@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::domain::Uuid;
 use crate::domain::address::{Address, ConvertedAddress};
 use crate::domain::address_conversion::*;
 use crate::domain::french_address::FrenchAddress;
@@ -13,7 +14,7 @@ pub enum AddressServiceError {
     #[error("Address conversion error")]
     ConversionError(#[from] AddressConversionError),
     #[error("Repository error")]
-    RepositoryError(#[from] AddressRepositoryError),
+    PersistenceError(#[from] AddressRepositoryError),
 }
 
 /// Short hand for `Result` type.
@@ -85,7 +86,7 @@ impl AddressService {
         Ok(either_converted_addr)
     }
 
-    pub fn save(&self, input: &str, from_format: Format) -> ServiceResult<()> {
+    pub fn save(&self, input: &str, from_format: Format) -> ServiceResult<Uuid> {
         let converted_addr = match from_format {
             Format::French => {
                 let french: FrenchAddress = serde_json::from_str(input)?;
@@ -98,10 +99,9 @@ impl AddressService {
         };
 
         let address = Address::new(converted_addr);
+        let id = self.repository.save(address)?;
 
-        self.repository.save(address)?;
-
-        Ok(())
+        Ok(id)
     }
 
     pub fn update(&self, id: &str, input: &str, from_format: Format) -> ServiceResult<()> {
@@ -124,24 +124,30 @@ impl AddressService {
         Ok(())
     }
 
-    pub fn fetch(&self, id: &str, conversion_format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
+    pub fn fetch(&self, id: &str) -> ServiceResult<Address> {
         let addr = self.repository.fetch(id)?;
-        let converted = addr.as_converted_address();
 
-        match conversion_format {
-            Format::French => Ok(Either::French(converted.to_french()?)),
-            Format::Iso20022 => Ok(Either::Iso20022(converted.to_iso20022()?)),
-        }
+        Ok(addr)
+    }
+
+    pub fn delete(&self, id: &str) -> ServiceResult<()> {
+        self.repository.delete(id)?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use uuid::Uuid;
+
     use crate::application::service::Either;
     use crate::application::service::Format;
     use crate::domain::french_address::*;
     use crate::domain::iso20022_address::*;
+    use crate::domain::repositories::AddressRepositoryError;
     use crate::infrastructure::InMemoryAddressRepository;
+    use super::ServiceResult;
     use super::{AddressService, AddressServiceError};
 
     fn service() -> AddressService {
@@ -303,5 +309,161 @@ pub mod tests {
         }"#;
         let result = service.convert(input, Format::French);
         assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+    }
+
+    #[test]
+    fn save_individual_french() -> ServiceResult<()> {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "internal_delivery": "Chez Mireille COPEAU Appartement 2",
+            "external_delivery": "Entrée A Bâtiment Jonquille",
+            "street": "25 RUE DE L'EGLISE",
+            "distribution_info": "CAUDOS",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+        
+        let id = service.save(input, Format::French)?;
+        let fetched = service.repository.fetch(&id.to_string())?;
+        assert_eq!(fetched.id(), id);
+
+        Ok(())
+    }
+
+    #[test]
+    fn save_business_iso() -> ServiceResult<()> {
+        let service = service();
+        let input = r#"{
+            "company_name": "Société DUPONT",
+            "postal_address": {
+                "street_name": "RUE EMILE ZOLA",
+                "building_number": "56",
+                "department": "Mademoiselle Lucie MARTIN",
+                "postbox": "BP 90432",
+                "town_location_name": "MONTFERRIER SUR LEZ",
+                "postcode": "34092",
+                "town_name": "MONTPELLIER CEDEX 5",
+                "country": "FR"
+            }
+        }"#;
+        
+        let id = service.save(input, Format::Iso20022)?;
+        let fetched = service.repository.fetch(&id.to_string())?;
+        assert_eq!(fetched.id(), id);
+
+        Ok(())
+    }
+
+    #[test]
+    fn update_existing_individual() -> ServiceResult<()> {
+        let service = service();
+        // Create individual address
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+
+        let id = service.save(input, Format::French)?;
+        let addr = service.fetch(&id.to_string())?;
+        
+        // Update with new street
+        let update_input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "10 AVENUE DES CHAMPS",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+        
+        service.update(&id.to_string(), update_input, Format::French)?;
+
+        // Verify update
+        let updated = service.repository.fetch(&id.to_string())?;
+        assert_eq!(updated.id(), id);
+
+        let updated_street = updated.street.clone().unwrap();
+        assert_eq!(updated_street.name, "AVENUE DES CHAMPS".to_string());
+        assert_eq!(updated_street.number, Some("10".to_string()));
+        assert!(&updated.updated_at() > &addr.updated_at());
+
+        Ok(())
+    }
+
+    #[test]
+    fn update_non_existent() {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+        let uuid = Uuid::new_v4();
+        let result = service.update(&uuid.to_string(), input, Format::French);
+        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+    }
+
+    #[test]
+    fn fetch_individual_as_french() -> ServiceResult<()> {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+        let saved = service.save(input, Format::French)?;
+        let fetched = service.repository.fetch(&saved.to_string())?;
+
+        assert_eq!(fetched.id().to_string(), saved.to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn fetch_non_existent() {
+        let service = service();
+        let uuid = Uuid::new_v4();
+        let result = service.fetch(&uuid.to_string());
+        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+    }
+
+    #[test]
+    fn delete_business_existing() -> ServiceResult<()> {
+        let service = service();
+        let input = r#"{
+            "company_name": "Société DUPONT",
+            "postal_address": {
+                "street_name": "RUE EMILE ZOLA",
+                "building_number": "56",
+                "postcode": "34092",
+                "town_name": "MONTPELLIER CEDEX 5",
+                "country": "FR"
+            }
+        }"#;
+        let saved = service.save(input, Format::Iso20022)?;
+        let fetched = service.fetch(&saved.to_string())?;
+        // assert that the resource is well saved
+        assert_eq!(fetched.id().to_string(), saved.to_string());
+
+        // assert that the delete op went well
+        let result = service.delete(&saved.to_string());
+        assert!(result.is_ok());
+
+        // assert that the ressource is deleted
+        let fetch_result = service.fetch(&saved.to_string());
+        assert!(fetch_result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn delete_non_existent() {
+        let service = service();
+        let uuid = Uuid::new_v4();
+        let result = service.delete(&uuid.to_string());
+        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
     }
 }

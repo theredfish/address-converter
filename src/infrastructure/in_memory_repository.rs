@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::domain::address::Address;
 use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
 use std::cell::RefCell;
@@ -22,16 +24,17 @@ impl Default for InMemoryAddressRepository {
 }
 
 impl AddressRepository for InMemoryAddressRepository {
-    fn save(&self, addr: Address) -> RepositoryResult<()> {
-        let id = addr.id.to_string();
+    fn save(&self, addr: Address) -> RepositoryResult<Uuid> {
+        let id = addr.id();
         let mut addresses = self.addresses.borrow_mut();
         
-        if addresses.get(&id).is_some() {
-            return Err(AddressRepositoryError::AlreadyExists(id));
+        if addresses.get(&id.to_string()).is_some() {
+            return Err(AddressRepositoryError::AlreadyExists(id.to_string()));
         }
 
-        addresses.insert(addr.id.to_string(), addr);
-        Ok(())
+        addresses.insert(id.to_string(), addr);
+        
+        Ok(id)
     }
 
     fn fetch(&self, id: &str) -> RepositoryResult<Address> {
@@ -45,7 +48,7 @@ impl AddressRepository for InMemoryAddressRepository {
 
     fn update(&self, addr: Address) -> RepositoryResult<()> {
         let mut addresses = self.addresses.borrow_mut();
-        let id = addr.id.to_string();
+        let id = addr.id().to_string();
         
         if addresses.get(&id).is_none() {
             return Err(AddressRepositoryError::NotFound(id));
