@@ -1,10 +1,12 @@
-#[derive(Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum IsoAddress {
     IndividualIsoAddress { name: String, iso_address: IsoPostalAddress },
     BusinessIsoAddress { company_name: String, iso_address: IsoPostalAddress },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct IsoPostalAddress {
     /// <StrtNm>
     pub street_name: Option<String>,

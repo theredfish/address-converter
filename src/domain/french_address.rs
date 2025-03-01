@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use super::address::{PostalDetails, Street};
 use super::address_conversion::AddressConversionError;
@@ -17,7 +18,7 @@ static POSTBOX_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]{2}\s+\d+").
 /// (e.g., BP 90432 MONTFERRIER SUR LEZ -> MONTFERRIER SUR LEZ)
 static TOWN_LOCATION_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(?:[A-Z]{2}\s+\d+\s+)?(.+)$").unwrap());
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum FrenchAddress {
     /// An individual french address.
     Individual(IndividualFrenchAddress),
@@ -25,7 +26,7 @@ pub enum FrenchAddress {
     Business(BusinessFrenchAddress)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct IndividualFrenchAddress {
     /// The individual identity
     /// (Civility - title / quality - firstname lastname).
@@ -46,7 +47,7 @@ pub struct IndividualFrenchAddress {
     pub country: String
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct BusinessFrenchAddress {
     /// The business name or trade name.
     pub business_name: String,
