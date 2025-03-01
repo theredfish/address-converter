@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use crate::application::service::{AddressService, Format, Either};
 
 #[derive(Parser)]
-#[command(name = "address_converter", about = "Convert and manage postal addresses")]
+#[command(name = "address_converter", about = "Convert and manage postal addresses (french/iso20022)")]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,

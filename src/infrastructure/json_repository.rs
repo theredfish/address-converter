@@ -1,5 +1,5 @@
 use crate::domain::Address;
-use crate::domain::repositories::{AddressRepository, RepositoryResult};
+use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
 use serde::{Serialize, Deserialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -23,16 +23,35 @@ impl JsonAddressRepository {
     }
 
     fn file_path(&self, id: &Uuid) -> PathBuf {
-        self.dir.join(format!("{}.json", id))
+        self.dir.join(format!("{id}.json"))
     }
 }
 
 impl AddressRepository for JsonAddressRepository {
     fn save(&self, addr: Address) -> RepositoryResult<Uuid> {
-        let id = addr.id(); // Use Address's existing id
-        let stored = StoredAddress { id, address: addr };
+        let id = addr.id();
+
+        // In case of UUID collision. While the probabilities of
+        // collisions are minimal, we remain defensive about this possibility.
+        // This will also cover human errors.
+        if self.fetch(&id.to_string()).is_ok() {
+            return Err(AddressRepositoryError::AlreadyExists(id.to_string()));
+        }
+
+        // Prevent address duplication
+        let all_addresses = self.fetch_all()?;
+        let duplication_check = all_addresses.iter().find(|existing| {
+                existing.street == addr.street &&
+                existing.postal_details.postcode == addr.postal_details.postcode &&
+                existing.country == addr.country
+        });
+        
+        if let Some(duplicated_addr) = duplication_check {
+            return Err(AddressRepositoryError::AlreadyExists(duplicated_addr.id().to_string()));
+        }
+
         let file = File::create(self.file_path(&id))?;
-        serde_json::to_writer(file, &stored)?;
+        serde_json::to_writer(file, &StoredAddress { id, address: addr })?;
         
         Ok(id)
     }
@@ -43,6 +62,21 @@ impl AddressRepository for JsonAddressRepository {
         let stored: StoredAddress = serde_json::from_reader(file)?;
         
         Ok(stored.address)
+    }
+
+    fn fetch_all(&self) -> RepositoryResult<Vec<Address>> {
+        let mut addresses = Vec::new();
+
+        for dir_entry in fs::read_dir(&self.dir)? {
+            let path = dir_entry?.path();
+
+            if path.extension().is_some_and(|ext| ext == "json") {
+                let file = File::open(&path)?;
+                let stored: StoredAddress = serde_json::from_reader(file)?;
+                addresses.push(stored.address);
+            }
+        }
+        Ok(addresses)
     }
 
     fn update(&self, addr: Address) -> RepositoryResult<()> {

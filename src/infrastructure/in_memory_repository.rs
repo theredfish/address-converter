@@ -26,13 +26,27 @@ impl Default for InMemoryAddressRepository {
 impl AddressRepository for InMemoryAddressRepository {
     fn save(&self, addr: Address) -> RepositoryResult<Uuid> {
         let id = addr.id();
-        let mut addresses = self.addresses.borrow_mut();
-        
-        if addresses.get(&id.to_string()).is_some() {
+
+        // In case of UUID collision. While the probabilities of
+        // collisions are minimal, we remain defensive about this possibility.
+        // This will also cover human errors.
+        if self.fetch(&id.to_string()).is_ok() {
             return Err(AddressRepositoryError::AlreadyExists(id.to_string()));
         }
+        
+        // Check for address duplicates
+        let all_addresses = self.fetch_all()?;
+        let duplication_check = all_addresses.iter().find(|existing| {
+            existing.street == addr.street &&
+            existing.postal_details.postcode == addr.postal_details.postcode &&
+            existing.country == addr.country
+        });
 
-        addresses.insert(id.to_string(), addr);
+        if let Some(duplicated_addr) = duplication_check {
+            return Err(AddressRepositoryError::AlreadyExists(duplicated_addr.id().to_string()));
+        }
+
+        self.addresses.borrow_mut().insert(id.to_string(), addr);
 
         Ok(id)
     }
@@ -44,6 +58,11 @@ impl AddressRepository for InMemoryAddressRepository {
             Some(address) => Ok(address),
             None => Err(AddressRepositoryError::NotFound(id.to_string()))
         }
+    }
+
+    fn fetch_all(&self) -> RepositoryResult<Vec<Address>> {
+        let addresses = self.addresses.borrow();
+        Ok(addresses.values().cloned().collect())
     }
 
     fn update(&self, addr: Address) -> RepositoryResult<()> {

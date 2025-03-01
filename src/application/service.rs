@@ -5,11 +5,11 @@ use crate::domain::repositories::{AddressRepositoryError, AddressRepository};
 
 #[derive(Error, Debug)]
 pub enum AddressServiceError {
-    #[error("Invalid json conversion")]
+    #[error("Invalid json conversion: {0}")]
     InvalidJson(#[from] serde_json::Error),
-    #[error("Address conversion error")]
+    #[error("Address conversion error: {0}")]
     ConversionError(#[from] AddressConversionError),
-    #[error("Repository error")]
+    #[error("Repository error: {0}")]
     PersistenceError(#[from] AddressRepositoryError),
 }
 
@@ -144,7 +144,7 @@ impl AddressService {
 
 #[cfg(test)]
 pub mod tests {
-    use uuid::Uuid;
+    use uuid::Uuid; 
 
     use crate::application::service::Either;
     use crate::application::service::Format;
@@ -336,6 +336,36 @@ pub mod tests {
     }
 
     #[test]
+    fn save_individual_duplicate() -> ServiceResult<()> {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "internal_delivery": "Chez Mireille COPEAU Appartement 2",
+            "external_delivery": "Entrée A Bâtiment Jonquille",
+            "street": "25 RUE DE L'EGLISE",
+            "distribution_info": "CAUDOS",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+
+        let minimal_input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+
+        // Save
+        service.save(input, Format::French)?;
+
+        // Recognize duplicated data
+        let result = service.save(minimal_input, Format::French);
+        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::AlreadyExists(_)))), "result was: {result:#?}");
+        
+        Ok(())
+    }
+
+    #[test]
     fn save_business_iso() -> ServiceResult<()> {
         let service = service();
         let input = r#"{
@@ -390,7 +420,7 @@ pub mod tests {
         let updated_street = updated.street.clone().unwrap();
         assert_eq!(updated_street.name, "AVENUE DES CHAMPS".to_string());
         assert_eq!(updated_street.number, Some("10".to_string()));
-        assert!(&updated.updated_at() > &addr.updated_at());
+        assert!(updated.updated_at() > addr.updated_at());
 
         Ok(())
     }
@@ -432,6 +462,35 @@ pub mod tests {
         let uuid = Uuid::new_v4();
         let result = service.fetch(&uuid.to_string());
         assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+    }
+
+    #[test]
+    fn fetch_all_individuals() -> ServiceResult<()> {
+        let service = service();
+        let input1 = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE",
+            "postal": "33380 MIOS",
+            "country": "FRANCE"
+        }"#;
+        let input2 = r#"{
+            "name": "Madame Isabelle RICHARD",
+            "street": "10 LE VILLAGE",
+            "postal": "82500 AUTERIVE",
+            "country": "FRANCE"
+        }"#;
+
+        service.save(input1, Format::French)?;
+        service.save(input2, Format::French)?;
+
+        let addresses = service.repository.fetch_all()?;
+
+        // Assert the results. In-memory HashMap doesn't guarantee order.
+        assert_eq!(addresses.len(), 2);
+        assert!(addresses.iter().any(|a| a.recipient == Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() }));
+        assert!(addresses.iter().any(|a| a.recipient == Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() }));
+
+        Ok(())
     }
 
     #[test]

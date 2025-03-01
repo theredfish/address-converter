@@ -23,6 +23,7 @@ pub type RepositoryResult<T> = std::result::Result<T, AddressRepositoryError>;
 pub trait AddressRepository {
     fn save(&self, addr: Address) -> RepositoryResult<Uuid>;
     fn fetch(&self, id: &str) -> RepositoryResult<Address>;
+    fn fetch_all(&self) -> RepositoryResult<Vec<Address>>;
     fn update(&self, addr: Address) -> RepositoryResult<()>;
     fn delete(&self, id: &str) -> RepositoryResult<()>;
 }
