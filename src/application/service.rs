@@ -1,11 +1,23 @@
 use serde_json::Value;
-use std::result::Result;
+use thiserror::Error;
 
 use crate::domain::address::Address;
+use crate::domain::address_conversion::AddressConversionError;
 use crate::domain::address_conversion::AddressConvertible;
 use crate::domain::french_address::FrenchAddress;
 use crate::domain::iso20022_address::*;
 use crate::domain::repositories::*;
+
+#[derive(Error, Debug)]
+pub enum AddressServiceError {
+    #[error("Invalid json conversion")]
+    InvalidJson(#[from] serde_json::Error),
+    #[error("Address conversion error")]
+    ConversionError(#[from] AddressConversionError),
+}
+
+/// Short hand for `Result` type.
+pub type ServiceResult<T> = std::result::Result<T, AddressServiceError>;
 
 pub struct AddressService {
     pub repository: Box<dyn AddressRepository>
@@ -50,18 +62,18 @@ impl AddressService {
     /// The given input could have been converted back and forth to DTOs. But
     /// for simplicity reason we decided to use the same format representation
     /// as the value objects which allows a straightforward data mapping.
-    pub fn convert(&self, input: &str, to_format: Format) -> Result<Either<FrenchAddress, IsoAddress>, String> {
+    pub fn convert(&self, input: &str, to_format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
         // Build the `Address` which is our internal domain model capable of
         // conversions.
         let address = self.build_address(input, &to_format)?;
 
         let converted_address = match to_format {
             Format::French => {
-                let addr = address.to_french().map_err(|e| e.to_string())?;
+                let addr = address.to_french()?;
                 Either::French(addr)
             }
             Format::Iso20022 => {
-                let addr = address.to_iso20022().map_err(|e| e.to_string())?;
+                let addr = address.to_iso20022()?;
                 Either::Iso20022(addr)
             }
         };
@@ -75,23 +87,23 @@ impl AddressService {
     /// that the source input is a french address. By deserializing the a
     /// FrenchAddress we will also be able to determine if the provided input
     /// is correct.
-    fn build_address(&self, input: &str, to_format: &Format) -> Result<Address, String> {
+    fn build_address(&self, input: &str, to_format: &Format) -> ServiceResult<Address> {
         // Builds the Value object (our DTO here) and check for valid json
-        let value: Value = serde_json::from_str(input).map_err(|e| e.to_string())?;
+        let value: Value = serde_json::from_str(input)?;
 
         // Deserialize to the correct value object based on the provided format.
         // If the desired format is ISO20022 then we deserialize the source
         // as a french address, and vice versa
         let addr = match to_format {
             Format::French => {
-                let iso: IsoAddress = serde_json::from_value(value).map_err(|e| e.to_string())?;
+                let iso: IsoAddress = serde_json::from_value(value)?;
                 Address::from_iso20022(iso)
             },
             Format::Iso20022 => {
-                let french: FrenchAddress = serde_json::from_value(value).map_err(|e| e.to_string())?;
+                let french: FrenchAddress = serde_json::from_value(value)?;
                 Address::from_french(french)
             }
-        }.map_err(|e| e.to_string())?;
+        }?;
 
         Ok(addr)
     }
@@ -99,8 +111,12 @@ impl AddressService {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{application::service::{Either, Format}, domain::{french_address::{BusinessFrenchAddress, FrenchAddress, IndividualFrenchAddress}, iso20022_address::{IsoAddress, IsoPostalAddress}}, infrastructure::in_memory_repository::InMemoryAddressRepository};
-    use super::AddressService;
+    use crate::application::service::Either;
+    use crate::application::service::Format;
+    use crate::domain::french_address::*;
+    use crate::domain::iso20022_address::*;
+    use crate::infrastructure::InMemoryAddressRepository;
+    use super::{AddressService, AddressServiceError};
 
     fn service() -> AddressService {
         let repo = InMemoryAddressRepository::new();
@@ -235,37 +251,31 @@ pub mod tests {
         let service = service();
         let input = "Monsieur Jean DELHOURME, 25 RUE DE L'EGLISE, 33380 MIOS, FRANCE";
         let result = service.convert(input, Format::Iso20022);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("expected value"));
+        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
     }
 
-    // TODO: Capture Error::InvalidFormat => Add application error + thiserror to map from domain
+    #[test]
+    fn invalid_french_json_format_missing_required_field() {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "street": "25 RUE DE L'EGLISE"
+        }"#;
+        let result = service.convert(input, Format::Iso20022);
+        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+    }
 
-    // #[test]
-    // fn invalid_french_json_format() {
-    //     let service = service();
-    //     let input = r#"{
-    //         "name": "Monsieur Jean DELHOURME",
-    //         "street": "25 RUE DE L'EGLISE"
-    //     }"#;
-    //     let result = service.convert(input, Format::Iso20022);
-    //     assert!(result.is_err());
-    //     println!("result was {:#?}", result);
-    //     assert!(result.unwrap_err().contains("missing field `postal`"));
-    // }
-
-    // #[test]
-    // fn invalid_iso_json_format() {
-    //     let service = service();
-    //     let input = r#"{
-    //         "name": "Monsieur Jean DELHOURME",
-    //         "postal_address": {
-    //             "street_name": "RUE DE L'EGLISE",
-    //             "building_number": "25"
-    //         }
-    //     }"#;
-    //     let result = service.convert(input, Format::French);
-    //     assert!(result.is_err());
-    //     assert!(result.unwrap_err().contains("missing field `postcode`"));
-    // }
+    #[test]
+    fn invalid_iso_json_format_missing_required_field() {
+        let service = service();
+        let input = r#"{
+            "name": "Monsieur Jean DELHOURME",
+            "postal_address": {
+                "street_name": "RUE DE L'EGLISE",
+                "building_number": "25"
+            }
+        }"#;
+        let result = service.convert(input, Format::French);
+        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+    }
 }

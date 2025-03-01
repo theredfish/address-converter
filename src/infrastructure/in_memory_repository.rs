@@ -1,5 +1,5 @@
 use crate::domain::address::Address;
-use crate::domain::repositories::{AddressRepository, AddressRepositoryError, Result};
+use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ impl Default for InMemoryAddressRepository {
 }
 
 impl AddressRepository for InMemoryAddressRepository {
-    fn save(&self, addr: Address) -> Result<()> {
+    fn save(&self, addr: Address) -> RepositoryResult<()> {
         let id = addr.id.to_string();
         let mut addresses = self.addresses.borrow_mut();
         
@@ -34,7 +34,7 @@ impl AddressRepository for InMemoryAddressRepository {
         Ok(())
     }
 
-    fn fetch(&self, id: &str) -> Result<Address> {
+    fn fetch(&self, id: &str) -> RepositoryResult<Address> {
         let address = self.addresses.borrow().get(id).cloned();
 
         match address {
@@ -43,7 +43,7 @@ impl AddressRepository for InMemoryAddressRepository {
         }
     }
 
-    fn update(&self, addr: Address) -> Result<()> {
+    fn update(&self, addr: Address) -> RepositoryResult<()> {
         let mut addresses = self.addresses.borrow_mut();
         let id = addr.id.to_string();
         
@@ -56,7 +56,7 @@ impl AddressRepository for InMemoryAddressRepository {
         Ok(())
     }
 
-    fn delete(&self, id: &str) -> Result<()> {
+    fn delete(&self, id: &str) -> RepositoryResult<()> {
         let mut addresses = self.addresses.borrow_mut();
         let id = id.to_string();
         

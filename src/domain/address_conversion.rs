@@ -1,26 +1,17 @@
-use std::fmt;
 use std::str::FromStr;
+use thiserror::Error;
 
 use super::address::*;
 use super::french_address::*;
 use super::iso20022_address::*;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum AddressConversionError {
+    #[error("Missing required field `{0}`")]
     MissingField(String),
+    #[error("Invalid format: `{0}`")]
     InvalidFormat(String),
 }
-
-impl fmt::Display for AddressConversionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::MissingField(field) => write!(f, "Missing required field: {}", field),
-            Self::InvalidFormat(msg) => write!(f, "Invalid format: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for AddressConversionError {}
 
 /// A trait representing the conversion rules for any convertible address.
 pub trait AddressConvertible {
