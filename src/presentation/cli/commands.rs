@@ -48,7 +48,7 @@ fn format_to_enum(format: &str) -> Result<Format, String> {
     }
 }
 
-pub fn run_command(cli: Cli, service: AddressService) -> Result<(), String> {
+pub fn run_command(cli: Cli, service: &AddressService) -> Result<(), String> {
     match cli.command {
         Commands::Save { address, from_format } => {
             let format = format_to_enum(&from_format)?;

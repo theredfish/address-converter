@@ -11,7 +11,7 @@ fn main() {
     let service = AddressService::new(Box::new(JsonAddressRepository::new(storage_dir)));
     
     let cli = Cli::parse();
-    if let Err(e) = run_command(cli, service) {
+    if let Err(e) = run_command(cli, &service) {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }

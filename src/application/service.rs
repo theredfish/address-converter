@@ -129,6 +129,7 @@ impl AddressService {
     pub fn fetch_format(&self, id: &str, format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
         let addr = self.fetch(id)?;
         let converted = addr.as_converted_address();
+        
         match format {
             Format::French => Ok(Either::French(converted.to_french()?)),
             Format::Iso20022 => Ok(Either::Iso20022(converted.to_iso20022()?)),
