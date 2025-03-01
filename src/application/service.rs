@@ -1,12 +1,11 @@
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::domain::address::Address;
-use crate::domain::address_conversion::AddressConversionError;
-use crate::domain::address_conversion::AddressConvertible;
+use crate::domain::address::{Address, ConvertedAddress};
+use crate::domain::address_conversion::*;
 use crate::domain::french_address::FrenchAddress;
-use crate::domain::iso20022_address::*;
-use crate::domain::repositories::*;
+use crate::domain::iso20022_address::IsoAddress;
+use crate::domain::repositories::{AddressRepositoryError, AddressRepository};
 
 #[derive(Error, Debug)]
 pub enum AddressServiceError {
@@ -14,6 +13,8 @@ pub enum AddressServiceError {
     InvalidJson(#[from] serde_json::Error),
     #[error("Address conversion error")]
     ConversionError(#[from] AddressConversionError),
+    #[error("Repository error")]
+    RepositoryError(#[from] AddressRepositoryError),
 }
 
 /// Short hand for `Result` type.
@@ -67,7 +68,7 @@ impl AddressService {
         // conversions.
         let address = self.build_address(input, &to_format)?;
 
-        let converted_address = match to_format {
+        let converted_addr = match to_format {
             Format::French => {
                 let addr = address.to_french()?;
                 Either::French(addr)
@@ -78,7 +79,26 @@ impl AddressService {
             }
         };
 
-        Ok(converted_address)
+        Ok(converted_addr)
+    }
+
+    pub fn save(&self, input: &str, from_format: Format) -> ServiceResult<()> {
+        let converted_addr = match from_format {
+            Format::French => {
+                let french: FrenchAddress = serde_json::from_str(input)?;
+                ConvertedAddress::from_french(french)?
+            }
+            Format::Iso20022 => {
+                let iso: IsoAddress = serde_json::from_str(input)?;
+                ConvertedAddress::from_iso20022(iso)?
+            }
+        };
+
+        let address = Address::new(converted_addr);
+
+        self.repository.save(address)?;
+
+        Ok(())
     }
 
     /// Since we only support two formats for the conversion, we can take a
@@ -87,25 +107,25 @@ impl AddressService {
     /// that the source input is a french address. By deserializing the a
     /// FrenchAddress we will also be able to determine if the provided input
     /// is correct.
-    fn build_address(&self, input: &str, to_format: &Format) -> ServiceResult<Address> {
+    fn build_address(&self, input: &str, to_format: &Format) -> ServiceResult<ConvertedAddress> {
         // Builds the Value object (our DTO here) and check for valid json
         let value: Value = serde_json::from_str(input)?;
 
         // Deserialize to the correct value object based on the provided format.
         // If the desired format is ISO20022 then we deserialize the source
         // as a french address, and vice versa
-        let addr = match to_format {
+        let converted_addr = match to_format {
             Format::French => {
                 let iso: IsoAddress = serde_json::from_value(value)?;
-                Address::from_iso20022(iso)
+                ConvertedAddress::from_iso20022(iso)
             },
             Format::Iso20022 => {
                 let french: FrenchAddress = serde_json::from_value(value)?;
-                Address::from_french(french)
+                ConvertedAddress::from_french(french)
             }
         }?;
 
-        Ok(addr)
+        Ok(converted_addr)
     }
 }
 

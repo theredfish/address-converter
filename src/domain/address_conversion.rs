@@ -29,7 +29,7 @@ pub trait AddressConvertible {
 // on the spec information. Required fields and max length
 // should be covered. For now we juste have some examples to demonstrate
 // the ability to validate the domain.
-impl AddressConvertible for Address {
+impl AddressConvertible for ConvertedAddress {
     fn to_french(&self) -> Result<FrenchAddress, AddressConversionError> {
         let distribution_info = || { 
             self.delivery_point.as_ref()
@@ -186,7 +186,7 @@ impl AddressConvertible for Address {
                 let country = Country::from_str(&individual.country)
                     .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
 
-                let individual_address = Address::new(
+                let individual_address = ConvertedAddress::new(
                     AddressKind::Individual,
                     Recipient::Individual { name: individual.name },
                     delivery_point,
@@ -213,7 +213,7 @@ impl AddressConvertible for Address {
 
                 postal.town_location = town_location;
 
-                let address = Address::new(
+                let address = ConvertedAddress::new(
                     AddressKind::Business,
                     Recipient::Business { 
                         company_name: business.business_name, 
@@ -244,7 +244,7 @@ impl AddressConvertible for Address {
                 let country = Country::from_str(&iso_address.country)
                     .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
 
-                let address = Address::new(
+                let address = ConvertedAddress::new(
                     AddressKind::Individual,
                     Recipient::Individual { name },
                     Some(DeliveryPoint {
@@ -270,7 +270,7 @@ impl AddressConvertible for Address {
                 let country = Country::from_str(&iso_address.country)
                     .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
 
-                let address = Address::new(
+                let address = ConvertedAddress::new(
                     AddressKind::Business,
                     Recipient::Business { 
                         company_name,

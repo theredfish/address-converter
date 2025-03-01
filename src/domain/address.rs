@@ -29,6 +29,54 @@ pub struct Address {
 }
 
 impl Address {
+    pub fn new(converted_address: ConvertedAddress) -> Self {
+        let id = Uuid::new_v4();
+        let updated_at = Utc::now();
+
+        let ConvertedAddress {
+            kind,
+            recipient,
+            delivery_point,
+            street,
+            postal_details,
+            country
+        } = converted_address;
+
+        Address { 
+            id,
+            updated_at,
+            kind,
+            recipient,
+            delivery_point,
+            street,
+            postal_details,
+            country 
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConvertedAddress {
+    /// The type of address. Can be an individual or a business. This
+    /// information is used for specific conversion rules depending on the type.
+    pub kind: AddressKind,
+    /// Keep track of the receipient details. This information is tracked to
+    /// build back addresses where the recipient is required. Some standards
+    /// like ISO 20022 store this information outside of the postal address.
+    pub recipient: Recipient,
+    /// Extra delivery point information such as the building, the entry or
+    /// postbox.
+    pub delivery_point: Option<DeliveryPoint>,
+    /// The street address information.
+    pub street: Option<Street>,
+    /// The postal details such as the postcode (or zipcode), town and extra
+    /// location information.
+    pub postal_details: PostalDetails,
+    /// The address country.
+    pub country: Country,
+}
+
+impl ConvertedAddress {
     pub fn new(
         kind: AddressKind,
         recipient: Recipient,
@@ -37,12 +85,7 @@ impl Address {
         postal_details: PostalDetails,
         country: Country
     ) -> Self {
-        let id = Uuid::new_v4();
-        let updated_at = Utc::now();
-
-        Address { 
-            id,
-            updated_at,
+        ConvertedAddress { 
             kind,
             recipient,
             delivery_point,
@@ -153,9 +196,7 @@ pub mod tests {
 
         #[test]
         fn full_individual_to_french() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Individual,
                 recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
                 delivery_point: Some(DeliveryPoint {
@@ -191,9 +232,7 @@ pub mod tests {
 
         #[test]
         fn full_individual_to_iso20022() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Individual,
                 recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
                 delivery_point: Some(DeliveryPoint {
@@ -235,9 +274,7 @@ pub mod tests {
 
         #[test]
         fn minimal_individual_to_french() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Individual,
                 recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
                 delivery_point: Some(DeliveryPoint {
@@ -273,9 +310,7 @@ pub mod tests {
 
         #[test]
         fn minimal_individual_to_iso20022() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Individual,
                 recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
                 delivery_point: Some(DeliveryPoint {
@@ -323,9 +358,7 @@ pub mod tests {
 
         #[test]
         fn business_to_french() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Business,
                 recipient: Recipient::Business { 
                     company_name: "Société DUPONT".to_string(),
@@ -364,9 +397,7 @@ pub mod tests {
 
         #[test]
         fn business_to_iso20022() {
-            let address = Address {
-                id: Uuid::new_v4(),
-                updated_at: Utc::now(),
+            let address = ConvertedAddress {
                 kind: AddressKind::Business,
                 recipient: Recipient::Business { 
                     company_name: "Société DUPONT".to_string(),
