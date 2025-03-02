@@ -47,13 +47,8 @@ JSON persistence, which could be swapped for a real database later.
 
 ## Getting started
 
-The CLI binary uses the json repository to store addresses on the filesystem.
-By default, addresses are storedin a folder named `json_storage` in your current
-directory. TO change this folder, prefix your commands with the `STORAGE_DIR`
-environment variable . For example:
-
 ```bash
-STORAGE_DIR="${HOME}/json_storage" cargo run --bin cli --help
+cargo run --bin cli -- --help
 ```
 
 ```
@@ -72,13 +67,25 @@ Options:
   -h, --help  Print help
 ```
 
-The next section provides examples of how to save addresses from a specific
+### Different storage folder
+
+The CLI binary uses the json repository to store addresses on the filesystem.
+By default, addresses are storedin a folder named `json_storage` in your current
+directory. TO change this folder, prefix your commands with the `STORAGE_DIR`
+environment variable . For example:
+
+```bash
+STORAGE_DIR="${HOME}/json_storage" cargo run --bin cli -- --help
+```
+
+### Save and Fetch
+
+This section provides examples of how to save addresses from a specific
 format (french or ISO 20022) and fetch them in the format of your choice. The
 `save` command gives you an ID, which you can use to fetch the saved address and
 format it. Note that you may need to delete the created address if you try to
 save the same data from a different format.
 
-### Save and Fetch
 #### Individual
 
 ##### French -> ISO20022
