@@ -234,7 +234,7 @@ pub mod tests {
             "country": "FRANCE"
         }"#;
         let expected = IsoAddress::BusinessIsoAddress {
-            company_name: "Société DUPONT".to_string(),
+            business_name: "Société DUPONT".to_string(),
             postal_address: IsoPostalAddress {
                 street_name: Some("RUE EMILE ZOLA".to_string()),
                 building_number: Some("56".to_string()),
@@ -257,7 +257,7 @@ pub mod tests {
     fn business_iso_to_french() {
         let service = service();
         let input = r#"{
-            "company_name": "Société DUPONT",
+            "business_name": "Société DUPONT",
             "postal_address": {
                 "street_name": "RUE EMILE ZOLA",
                 "building_number": "56",
@@ -370,7 +370,7 @@ pub mod tests {
     fn save_business_iso() -> ServiceResult<()> {
         let service = service();
         let input = r#"{
-            "company_name": "Société DUPONT",
+            "business_name": "Société DUPONT",
             "postal_address": {
                 "street_name": "RUE EMILE ZOLA",
                 "building_number": "56",
@@ -498,7 +498,7 @@ pub mod tests {
     fn delete_business_existing() -> ServiceResult<()> {
         let service = service();
         let input = r#"{
-            "company_name": "Société DUPONT",
+            "business_name": "Société DUPONT",
             "postal_address": {
                 "street_name": "RUE EMILE ZOLA",
                 "building_number": "56",

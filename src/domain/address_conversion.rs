@@ -155,7 +155,7 @@ impl AddressConvertible for ConvertedAddress {
                 };
                 iso_address.department = self.recipient.denomination();
 
-                Ok(IsoAddress::BusinessIsoAddress { company_name: org_id, postal_address: iso_address })
+                Ok(IsoAddress::BusinessIsoAddress { business_name: org_id, postal_address: iso_address })
             }
         }
     }
@@ -266,7 +266,7 @@ impl AddressConvertible for ConvertedAddress {
 
                 Ok(address)
             }
-            IsoAddress::BusinessIsoAddress { company_name, postal_address: iso_address } => {
+            IsoAddress::BusinessIsoAddress { business_name: company_name, postal_address: iso_address } => {
                 let country = Country::from_str(&iso_address.country)
                     .map_err(|err| AddressConversionError::InvalidFormat(err.to_string()))?;
 

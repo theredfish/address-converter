@@ -461,7 +461,7 @@ pub mod tests {
             };
 
             let expected = IsoAddress::BusinessIsoAddress {
-                company_name: "Société DUPONT".to_string(),
+                business_name: "Société DUPONT".to_string(),
                 postal_address: IsoPostalAddress {
                     street_name: Some("RUE EMILE ZOLA".to_string()),
                     building_number: Some("56".to_string()),

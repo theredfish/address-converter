@@ -53,20 +53,20 @@ pub fn run_command(cli: Cli, service: &AddressService) -> Result<(), String> {
         Commands::Save { address, from_format } => {
             let format = format_to_enum(&from_format)?;
             let id = service.save(&address, format).map_err(|e| e.to_string())?;
-            println!("Saved address with ID: {}", id);
+            println!("\nSaved address with ID: {}", id);
 
             Ok(())
         }
         Commands::Update { id, address, from_format } => {
             let format = format_to_enum(&from_format)?;
             service.update(&id, &address, format).map_err(|e| e.to_string())?;
-            println!("Updated address with ID: {}", id);
+            println!("\nUpdated address with ID: {}", id);
 
             Ok(())
         }
         Commands::Delete { id } => {
             service.delete(&id).map_err(|e| e.to_string())?;
-            println!("Deleted address with ID: {}", id);
+            println!("\nDeleted address with ID: {}", id);
 
             Ok(())
         }

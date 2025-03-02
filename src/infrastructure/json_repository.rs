@@ -2,6 +2,7 @@ use crate::domain::Address;
 use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
 use serde::{Serialize, Deserialize};
 use std::fs::{self, File};
+use std::io;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -58,7 +59,18 @@ impl AddressRepository for JsonAddressRepository {
 
     fn fetch(&self, id: &str) -> RepositoryResult<Address> {
         let id = Uuid::parse_str(id)?;
-        let file = File::open(self.file_path(&id))?;
+        let result = File::open(self.file_path(&id));
+
+        let file = match result {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                return Err(AddressRepositoryError::NotFound(id.to_string()))
+            },
+            Err(e) => {
+                return Err(AddressRepositoryError::IOFailure(e))
+            },
+            Ok(file) => file
+        };
+
         let stored: StoredAddress = serde_json::from_reader(file)?;
         
         Ok(stored.address)
@@ -90,8 +102,14 @@ impl AddressRepository for JsonAddressRepository {
 
     fn delete(&self, id: &str) -> RepositoryResult<()> {
         let id = Uuid::parse_str(id)?;
-        fs::remove_file(self.file_path(&id))?;
-        
-        Ok(())
+        let result = fs::remove_file(self.file_path(&id));
+
+        match result {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                Err(AddressRepositoryError::NotFound(id.to_string()))
+            },
+            Err(e) => Err(AddressRepositoryError::IOFailure(e)),
+            Ok(_) => Ok(())
+        }
     }
 }

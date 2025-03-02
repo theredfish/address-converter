@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(untagged)]
 pub enum IsoAddress {
     IndividualIsoAddress { name: String, postal_address: IsoPostalAddress },
-    BusinessIsoAddress { company_name: String, postal_address: IsoPostalAddress },
+    BusinessIsoAddress { business_name: String, postal_address: IsoPostalAddress },
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
