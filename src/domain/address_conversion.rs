@@ -25,10 +25,6 @@ pub trait AddressConvertible {
     fn to_iso20022(&self) -> Result<IsoAddress, AddressConversionError>;
 }
 
-// TODO if time: each value object should be validated based
-// on the spec information. Required fields and max length
-// should be covered. For now we juste have some examples to demonstrate
-// the ability to validate the domain.
 impl AddressConvertible for ConvertedAddress {
     fn to_french(&self) -> Result<FrenchAddress, AddressConversionError> {
         let distribution_info = || { 
