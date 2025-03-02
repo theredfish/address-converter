@@ -1,6 +1,6 @@
-use crate::domain::Address;
 use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
-use serde::{Serialize, Deserialize};
+use crate::domain::Address;
+use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io;
 use std::path::PathBuf;
@@ -42,18 +42,20 @@ impl AddressRepository for JsonAddressRepository {
         // Prevent address duplication
         let all_addresses = self.fetch_all()?;
         let duplication_check = all_addresses.iter().find(|existing| {
-                existing.street == addr.street &&
-                existing.postal_details.postcode == addr.postal_details.postcode &&
-                existing.country == addr.country
+            existing.street == addr.street
+                && existing.postal_details.postcode == addr.postal_details.postcode
+                && existing.country == addr.country
         });
-        
+
         if let Some(duplicated_addr) = duplication_check {
-            return Err(AddressRepositoryError::AlreadyExists(duplicated_addr.id().to_string()));
+            return Err(AddressRepositoryError::AlreadyExists(
+                duplicated_addr.id().to_string(),
+            ));
         }
 
         let file = File::create(self.file_path(&id))?;
         serde_json::to_writer(file, &StoredAddress { id, address: addr })?;
-        
+
         Ok(id)
     }
 
@@ -64,15 +66,13 @@ impl AddressRepository for JsonAddressRepository {
         let file = match result {
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 return Err(AddressRepositoryError::NotFound(id.to_string()))
-            },
-            Err(e) => {
-                return Err(AddressRepositoryError::IOFailure(e))
-            },
-            Ok(file) => file
+            }
+            Err(e) => return Err(AddressRepositoryError::IOFailure(e)),
+            Ok(file) => file,
         };
 
         let stored: StoredAddress = serde_json::from_reader(file)?;
-        
+
         Ok(stored.address)
     }
 
@@ -96,7 +96,7 @@ impl AddressRepository for JsonAddressRepository {
         let stored = StoredAddress { id, address: addr };
         let file = File::create(self.file_path(&id))?;
         serde_json::to_writer(file, &stored)?;
-        
+
         Ok(())
     }
 
@@ -107,9 +107,9 @@ impl AddressRepository for JsonAddressRepository {
         match result {
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 Err(AddressRepositoryError::NotFound(id.to_string()))
-            },
+            }
             Err(e) => Err(AddressRepositoryError::IOFailure(e)),
-            Ok(_) => Ok(())
+            Ok(_) => Ok(()),
         }
     }
 }

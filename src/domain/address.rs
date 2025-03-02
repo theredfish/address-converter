@@ -40,10 +40,10 @@ impl Address {
             delivery_point,
             street,
             postal_details,
-            country
+            country,
         } = converted_address;
 
-        Address { 
+        Address {
             id,
             updated_at,
             kind,
@@ -51,7 +51,7 @@ impl Address {
             delivery_point,
             street,
             postal_details,
-            country 
+            country,
         }
     }
 
@@ -83,7 +83,7 @@ impl Address {
             delivery_point,
             street,
             postal_details,
-            country
+            country,
         } = update;
 
         self.kind = kind;
@@ -123,15 +123,15 @@ impl ConvertedAddress {
         delivery_point: Option<DeliveryPoint>,
         street: Option<Street>,
         postal_details: PostalDetails,
-        country: Country
+        country: Country,
     ) -> Self {
-        ConvertedAddress { 
+        ConvertedAddress {
             kind,
             recipient,
             delivery_point,
             street,
             postal_details,
-            country 
+            country,
         }
     }
 }
@@ -150,15 +150,18 @@ pub enum Recipient {
     /// the business denomination (or brand) and service name or contact
     ///
     /// # Example 1
-    /// 
+    ///
     /// Société DUPONT
     /// Mademoiselle Lucie MARTIN
-    /// 
+    ///
     /// # Example 2
-    /// 
+    ///
     /// DURAND SA
     /// Service achat
-    Business { company_name: String, contact: Option<String> },
+    Business {
+        company_name: String,
+        contact: Option<String>,
+    },
 }
 
 impl Recipient {
@@ -202,7 +205,7 @@ pub struct PostalDetails {
 #[strum(serialize_all = "UPPERCASE", ascii_case_insensitive)]
 pub enum Country {
     #[strum(serialize = "FRANCE", serialize = "FR")]
-    France
+    France,
 }
 
 impl Country {
@@ -231,14 +234,16 @@ pub mod tests {
     }
 
     mod individual_tests {
-        use crate::domain::iso20022_address::{IsoAddress, IsoPostalAddress};
         use super::*;
+        use crate::domain::iso20022_address::{IsoAddress, IsoPostalAddress};
 
         #[test]
         fn full_individual_to_french() {
             let address = ConvertedAddress {
                 kind: AddressKind::Individual,
-                recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
+                recipient: Recipient::Individual {
+                    name: "Monsieur Jean DELHOURME".to_string(),
+                },
                 delivery_point: Some(DeliveryPoint {
                     internal: Some("Chez Mireille COPEAU Appartement 2".to_string()),
                     external: Some("Entrée A Bâtiment Jonquille".to_string()),
@@ -274,7 +279,9 @@ pub mod tests {
         fn full_individual_to_iso20022() {
             let address = ConvertedAddress {
                 kind: AddressKind::Individual,
-                recipient: Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() },
+                recipient: Recipient::Individual {
+                    name: "Monsieur Jean DELHOURME".to_string(),
+                },
                 delivery_point: Some(DeliveryPoint {
                     internal: Some("Chez Mireille COPEAU Appartement 2".to_string()),
                     external: Some("Entrée A Bâtiment Jonquille".to_string()),
@@ -316,7 +323,9 @@ pub mod tests {
         fn minimal_individual_to_french() {
             let address = ConvertedAddress {
                 kind: AddressKind::Individual,
-                recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
+                recipient: Recipient::Individual {
+                    name: "Madame Isabelle RICHARD".to_string(),
+                },
                 delivery_point: Some(DeliveryPoint {
                     internal: None,
                     external: Some("VILLA BEAU SOLEIL".to_string()),
@@ -352,7 +361,9 @@ pub mod tests {
         fn minimal_individual_to_iso20022() {
             let address = ConvertedAddress {
                 kind: AddressKind::Individual,
-                recipient: Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() },
+                recipient: Recipient::Individual {
+                    name: "Madame Isabelle RICHARD".to_string(),
+                },
                 delivery_point: Some(DeliveryPoint {
                     internal: None,
                     external: Some("VILLA BEAU SOLEIL".to_string()),
@@ -400,7 +411,7 @@ pub mod tests {
         fn business_to_french() {
             let address = ConvertedAddress {
                 kind: AddressKind::Business,
-                recipient: Recipient::Business { 
+                recipient: Recipient::Business {
                     company_name: "Société DUPONT".to_string(),
                     contact: Some("Mademoiselle Lucie MARTIN".to_string()),
                 },
@@ -439,7 +450,7 @@ pub mod tests {
         fn business_to_iso20022() {
             let address = ConvertedAddress {
                 kind: AddressKind::Business,
-                recipient: Recipient::Business { 
+                recipient: Recipient::Business {
                     company_name: "Société DUPONT".to_string(),
                     contact: Some("Mademoiselle Lucie MARTIN".to_string()),
                 },

@@ -14,7 +14,7 @@ pub enum AddressRepositoryError {
     #[error("Underlying I/O operation failed")]
     IOFailure(#[from] std::io::Error),
     #[error("Underlying serialization or deserialization operation failed")]
-    SerializationFailure(#[from] serde_json::Error)
+    SerializationFailure(#[from] serde_json::Error),
 }
 
 /// Short hand for `Result` type.

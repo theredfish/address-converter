@@ -1,7 +1,7 @@
 use thiserror::Error;
 
+use crate::domain::repositories::{AddressRepository, AddressRepositoryError};
 use crate::domain::*;
-use crate::domain::repositories::{AddressRepositoryError, AddressRepository};
 
 #[derive(Error, Debug)]
 pub enum AddressServiceError {
@@ -17,7 +17,7 @@ pub enum AddressServiceError {
 pub type ServiceResult<T> = std::result::Result<T, AddressServiceError>;
 
 pub struct AddressService {
-    pub repository: Box<dyn AddressRepository>
+    pub repository: Box<dyn AddressRepository>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -30,14 +30,14 @@ impl<F, I> Either<F, I> {
     pub fn french(self) -> Option<F> {
         match self {
             Either::French(f) => Some(f),
-            Either::Iso20022(_) => None
+            Either::Iso20022(_) => None,
         }
     }
 
     pub fn iso20022(self) -> Option<I> {
         match self {
             Either::French(_) => None,
-            Either::Iso20022(i) => Some(i)
+            Either::Iso20022(i) => Some(i),
         }
     }
 }
@@ -45,7 +45,7 @@ impl<F, I> Either<F, I> {
 #[derive(Debug, PartialEq)]
 pub enum Format {
     French,
-    Iso20022
+    Iso20022,
 }
 
 impl AddressService {
@@ -55,11 +55,15 @@ impl AddressService {
 
     /// Converts a json raw string input into an internal representation of an
     /// address. The returned address is either a french address of an iso20022.
-    /// 
+    ///
     /// The given input could have been converted back and forth to DTOs. But
     /// for simplicity reason we decided to use the same format representation
     /// as the value objects which allows a straightforward data mapping.
-    pub fn convert(&self, input: &str, to_format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
+    pub fn convert(
+        &self,
+        input: &str,
+        to_format: Format,
+    ) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
         let either_converted_addr = match to_format {
             Format::French => {
                 // Build from the ISO20022 input
@@ -126,10 +130,14 @@ impl AddressService {
         Ok(addr)
     }
 
-    pub fn fetch_format(&self, id: &str, format: Format) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
+    pub fn fetch_format(
+        &self,
+        id: &str,
+        format: Format,
+    ) -> ServiceResult<Either<FrenchAddress, IsoAddress>> {
         let addr = self.fetch(id)?;
         let converted = addr.as_converted_address();
-        
+
         match format {
             Format::French => Ok(Either::French(converted.to_french()?)),
             Format::Iso20022 => Ok(Either::Iso20022(converted.to_iso20022()?)),
@@ -145,15 +153,15 @@ impl AddressService {
 
 #[cfg(test)]
 pub mod tests {
-    use uuid::Uuid; 
+    use uuid::Uuid;
 
-    use crate::application::service::Either;
-    use crate::application::service::Format;
-    use crate::domain::*;
-    use crate::domain::repositories::AddressRepositoryError;
-    use crate::infrastructure::InMemoryAddressRepository;
     use super::ServiceResult;
     use super::{AddressService, AddressServiceError};
+    use crate::application::service::Either;
+    use crate::application::service::Format;
+    use crate::domain::repositories::AddressRepositoryError;
+    use crate::domain::*;
+    use crate::infrastructure::InMemoryAddressRepository;
 
     fn service() -> AddressService {
         let repo = InMemoryAddressRepository::new();
@@ -288,7 +296,10 @@ pub mod tests {
         let service = service();
         let input = "Monsieur Jean DELHOURME, 25 RUE DE L'EGLISE, 33380 MIOS, FRANCE";
         let result = service.convert(input, Format::Iso20022);
-        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+        assert!(
+            matches!(result, Err(AddressServiceError::InvalidJson(_))),
+            "Result was: {result:#?}"
+        );
     }
 
     #[test]
@@ -299,7 +310,10 @@ pub mod tests {
             "street": "25 RUE DE L'EGLISE"
         }"#;
         let result = service.convert(input, Format::Iso20022);
-        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+        assert!(
+            matches!(result, Err(AddressServiceError::InvalidJson(_))),
+            "Result was: {result:#?}"
+        );
     }
 
     #[test]
@@ -313,7 +327,10 @@ pub mod tests {
             }
         }"#;
         let result = service.convert(input, Format::French);
-        assert!(matches!(result, Err(AddressServiceError::InvalidJson(_))), "Result was: {result:#?}");
+        assert!(
+            matches!(result, Err(AddressServiceError::InvalidJson(_))),
+            "Result was: {result:#?}"
+        );
     }
 
     #[test]
@@ -328,7 +345,7 @@ pub mod tests {
             "postal": "33380 MIOS",
             "country": "FRANCE"
         }"#;
-        
+
         let id = service.save(input, Format::French)?;
         let fetched = service.repository.fetch(&id.to_string())?;
         assert_eq!(fetched.id(), id);
@@ -361,8 +378,16 @@ pub mod tests {
 
         // Recognize duplicated data
         let result = service.save(minimal_input, Format::French);
-        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::AlreadyExists(_)))), "result was: {result:#?}");
-        
+        assert!(
+            matches!(
+                result,
+                Err(AddressServiceError::PersistenceError(
+                    AddressRepositoryError::AlreadyExists(_)
+                ))
+            ),
+            "result was: {result:#?}"
+        );
+
         Ok(())
     }
 
@@ -382,7 +407,7 @@ pub mod tests {
                 "country": "FR"
             }
         }"#;
-        
+
         let id = service.save(input, Format::Iso20022)?;
         let fetched = service.repository.fetch(&id.to_string())?;
         assert_eq!(fetched.id(), id);
@@ -403,7 +428,7 @@ pub mod tests {
 
         let id = service.save(input, Format::French)?;
         let addr = service.fetch(&id.to_string())?;
-        
+
         // Update with new street
         let update_input = r#"{
             "name": "Monsieur Jean DELHOURME",
@@ -411,7 +436,7 @@ pub mod tests {
             "postal": "33380 MIOS",
             "country": "FRANCE"
         }"#;
-        
+
         service.update(&id.to_string(), update_input, Format::French)?;
 
         // Verify update
@@ -437,7 +462,12 @@ pub mod tests {
         }"#;
         let uuid = Uuid::new_v4();
         let result = service.update(&uuid.to_string(), input, Format::French);
-        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+        assert!(matches!(
+            result,
+            Err(AddressServiceError::PersistenceError(
+                AddressRepositoryError::NotFound(_)
+            ))
+        ));
     }
 
     #[test]
@@ -462,7 +492,12 @@ pub mod tests {
         let service = service();
         let uuid = Uuid::new_v4();
         let result = service.fetch(&uuid.to_string());
-        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+        assert!(matches!(
+            result,
+            Err(AddressServiceError::PersistenceError(
+                AddressRepositoryError::NotFound(_)
+            ))
+        ));
     }
 
     #[test]
@@ -488,8 +523,14 @@ pub mod tests {
 
         // Assert the results. In-memory HashMap doesn't guarantee order.
         assert_eq!(addresses.len(), 2);
-        assert!(addresses.iter().any(|a| a.recipient == Recipient::Individual { name: "Monsieur Jean DELHOURME".to_string() }));
-        assert!(addresses.iter().any(|a| a.recipient == Recipient::Individual { name: "Madame Isabelle RICHARD".to_string() }));
+        assert!(addresses.iter().any(|a| a.recipient
+            == Recipient::Individual {
+                name: "Monsieur Jean DELHOURME".to_string()
+            }));
+        assert!(addresses.iter().any(|a| a.recipient
+            == Recipient::Individual {
+                name: "Madame Isabelle RICHARD".to_string()
+            }));
 
         Ok(())
     }
@@ -528,6 +569,11 @@ pub mod tests {
         let service = service();
         let uuid = Uuid::new_v4();
         let result = service.delete(&uuid.to_string());
-        assert!(matches!(result, Err(AddressServiceError::PersistenceError(AddressRepositoryError::NotFound(_)))));
+        assert!(matches!(
+            result,
+            Err(AddressServiceError::PersistenceError(
+                AddressRepositoryError::NotFound(_)
+            ))
+        ));
     }
 }

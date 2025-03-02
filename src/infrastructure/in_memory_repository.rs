@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-use crate::domain::Address;
 use crate::domain::repositories::{AddressRepository, AddressRepositoryError, RepositoryResult};
+use crate::domain::Address;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -33,17 +33,19 @@ impl AddressRepository for InMemoryAddressRepository {
         if self.fetch(&id.to_string()).is_ok() {
             return Err(AddressRepositoryError::AlreadyExists(id.to_string()));
         }
-        
+
         // Check for address duplicates
         let all_addresses = self.fetch_all()?;
         let duplication_check = all_addresses.iter().find(|existing| {
-            existing.street == addr.street &&
-            existing.postal_details.postcode == addr.postal_details.postcode &&
-            existing.country == addr.country
+            existing.street == addr.street
+                && existing.postal_details.postcode == addr.postal_details.postcode
+                && existing.country == addr.country
         });
 
         if let Some(duplicated_addr) = duplication_check {
-            return Err(AddressRepositoryError::AlreadyExists(duplicated_addr.id().to_string()));
+            return Err(AddressRepositoryError::AlreadyExists(
+                duplicated_addr.id().to_string(),
+            ));
         }
 
         self.addresses.borrow_mut().insert(id.to_string(), addr);
@@ -56,7 +58,7 @@ impl AddressRepository for InMemoryAddressRepository {
 
         match address {
             Some(address) => Ok(address),
-            None => Err(AddressRepositoryError::NotFound(id.to_string()))
+            None => Err(AddressRepositoryError::NotFound(id.to_string())),
         }
     }
 
@@ -68,7 +70,7 @@ impl AddressRepository for InMemoryAddressRepository {
     fn update(&self, addr: Address) -> RepositoryResult<()> {
         let mut addresses = self.addresses.borrow_mut();
         let id = addr.id().to_string();
-        
+
         if addresses.get(&id).is_none() {
             return Err(AddressRepositoryError::NotFound(id));
         }
@@ -81,7 +83,7 @@ impl AddressRepository for InMemoryAddressRepository {
     fn delete(&self, id: &str) -> RepositoryResult<()> {
         let mut addresses = self.addresses.borrow_mut();
         let id = id.to_string();
-        
+
         if addresses.get(&id).is_none() {
             return Err(AddressRepositoryError::NotFound(id));
         }

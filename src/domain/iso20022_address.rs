@@ -3,8 +3,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum IsoAddress {
-    IndividualIsoAddress { name: String, postal_address: IsoPostalAddress },
-    BusinessIsoAddress { business_name: String, postal_address: IsoPostalAddress },
+    IndividualIsoAddress {
+        name: String,
+        postal_address: IsoPostalAddress,
+    },
+    BusinessIsoAddress {
+        business_name: String,
+        postal_address: IsoPostalAddress,
+    },
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

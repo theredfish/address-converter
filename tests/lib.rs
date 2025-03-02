@@ -1,10 +1,10 @@
 use address_converter::application::service::AddressService;
 use address_converter::infrastructure::JsonAddressRepository;
-use address_converter::presentation::cli::commands::{Cli, run_command};
+use address_converter::presentation::cli::commands::{run_command, Cli};
 use clap::Parser;
-use tempfile::TempDir;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
+use tempfile::TempDir;
 
 fn service(temp_dir: &TempDir) -> AddressService {
     let repo = JsonAddressRepository::new(temp_dir.path());
@@ -55,11 +55,25 @@ fn cli_save_duplicate_french() {
     let input = r#"{"name": "Monsieur Jean DELHOURME", "street": "25 RUE DE L'EGLISE", "postal": "33380 MIOS", "country": "FRANCE"}"#;
 
     // Save
-    let cli1 = Cli::parse_from(["address_converter", "save", "--address", input, "--from-format", "french"]);
+    let cli1 = Cli::parse_from([
+        "address_converter",
+        "save",
+        "--address",
+        input,
+        "--from-format",
+        "french",
+    ]);
     run_command(cli1, &service).unwrap();
 
     // Try saving duplicate
-    let cli2 = Cli::parse_from(["address_converter", "save", "--address", input, "--from-format", "french"]);
+    let cli2 = Cli::parse_from([
+        "address_converter",
+        "save",
+        "--address",
+        input,
+        "--from-format",
+        "french",
+    ]);
     let result = run_command(cli2, &service);
     assert!(matches!(result, Err(e) if e.contains("Resource already exists:")));
 }
@@ -79,7 +93,7 @@ fn cli_update() {
         "french",
     ]);
     run_command(save_cli, &service).unwrap();
-    
+
     // Retrieve the first file id
     let file_id = get_file_id(temp_dir.path());
 

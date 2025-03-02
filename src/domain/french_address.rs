@@ -16,7 +16,8 @@ static POSTBOX_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[A-Z]{2}\s+\d+").
 /// Regex to capture the town location information. There are two groups, the
 /// first for the postbox (ignored), the second for the townlocation.
 /// (e.g., BP 90432 MONTFERRIER SUR LEZ -> MONTFERRIER SUR LEZ)
-static TOWN_LOCATION_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(?:[A-Z]{2}\s+\d+\s+)?(.+)$").unwrap());
+static TOWN_LOCATION_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(?:[A-Z]{2}\s+\d+\s+)?(.+)$").unwrap());
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -24,7 +25,7 @@ pub enum FrenchAddress {
     /// An individual french address.
     Individual(IndividualFrenchAddress),
     /// A business french address.
-    Business(BusinessFrenchAddress)
+    Business(BusinessFrenchAddress),
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -45,7 +46,7 @@ pub struct IndividualFrenchAddress {
     /// The postal code and locality destination.
     pub postal: String,
     /// The country name.
-    pub country: String
+    pub country: String,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -67,7 +68,7 @@ pub struct BusinessFrenchAddress {
     /// distributor office.
     pub postal: String,
     /// The country name.
-    pub country: String
+    pub country: String,
 }
 
 pub struct FrenchAddressParser;
@@ -75,45 +76,59 @@ pub struct FrenchAddressParser;
 impl FrenchAddressParser {
     pub fn parse_street(street: &str) -> Result<Street, AddressConversionError> {
         if street.is_empty() {
-            return Err(AddressConversionError::InvalidFormat("Street cannot be empty".to_string()));
+            return Err(AddressConversionError::InvalidFormat(
+                "Street cannot be empty".to_string(),
+            ));
         }
         if let Some(caps) = STREET_REGEX.captures(street) {
             let number = caps.get(1).map(|m| m.as_str().to_string());
-            let name = caps.get(2).map_or("".to_string(), |m| m.as_str().to_string());
+            let name = caps
+                .get(2)
+                .map_or("".to_string(), |m| m.as_str().to_string());
             if name.is_empty() {
-                return Err(AddressConversionError::InvalidFormat("Street name cannot be empty".to_string()));
+                return Err(AddressConversionError::InvalidFormat(
+                    "Street name cannot be empty".to_string(),
+                ));
             }
-            
+
             return Ok(Street { number, name });
         }
-        
-        Err(AddressConversionError::InvalidFormat("Invalid street format".to_string()))
+
+        Err(AddressConversionError::InvalidFormat(
+            "Invalid street format".to_string(),
+        ))
     }
 
     pub fn parse_postal(postal: &str) -> Result<PostalDetails, AddressConversionError> {
         const POSTAL_ERROR: &str = "Postal information should contain a postcode/zipcode and a town (e.g., '44000 NANTES')";
 
         if let Some(caps) = POSTAL_REGEX.captures(postal) {
-            let postcode = caps.get(1)
-                .map(|m| m.as_str().to_string())
-                .ok_or(AddressConversionError::InvalidFormat(POSTAL_ERROR.to_string()))?;
-            let town = caps.get(2)
-                .map(|m| m.as_str().to_string())
-                .ok_or(AddressConversionError::InvalidFormat(POSTAL_ERROR.to_string()))?;
-            
+            let postcode = caps.get(1).map(|m| m.as_str().to_string()).ok_or(
+                AddressConversionError::InvalidFormat(POSTAL_ERROR.to_string()),
+            )?;
+            let town = caps.get(2).map(|m| m.as_str().to_string()).ok_or(
+                AddressConversionError::InvalidFormat(POSTAL_ERROR.to_string()),
+            )?;
+
             Ok(PostalDetails {
                 postcode,
                 town,
                 town_location: None,
             })
         } else {
-            Err(AddressConversionError::InvalidFormat(POSTAL_ERROR.to_string()))
+            Err(AddressConversionError::InvalidFormat(
+                POSTAL_ERROR.to_string(),
+            ))
         }
     }
 
-    pub fn parse_postbox(distribution_info: &str) -> Result<Option<String>, AddressConversionError> {
+    pub fn parse_postbox(
+        distribution_info: &str,
+    ) -> Result<Option<String>, AddressConversionError> {
         if distribution_info.is_empty() {
-            return Err(AddressConversionError::InvalidFormat("Distribution info cannot be empty if provided".to_string()));
+            return Err(AddressConversionError::InvalidFormat(
+                "Distribution info cannot be empty if provided".to_string(),
+            ));
         }
 
         if let Some(caps) = POSTBOX_REGEX.captures(distribution_info) {
@@ -124,14 +139,18 @@ impl FrenchAddressParser {
         }
     }
 
-    pub fn parse_town_location(distribution_info: &str) -> Result<Option<String>, AddressConversionError> {
+    pub fn parse_town_location(
+        distribution_info: &str,
+    ) -> Result<Option<String>, AddressConversionError> {
         if distribution_info.is_empty() {
-            return Err(AddressConversionError::InvalidFormat("Distribution info cannot be empty if provided".to_string()));
+            return Err(AddressConversionError::InvalidFormat(
+                "Distribution info cannot be empty if provided".to_string(),
+            ));
         }
 
         if let Some(caps) = TOWN_LOCATION_REGEX.captures(distribution_info) {
             let town_location = caps.get(1).map(|m| m.as_str().to_string());
-            
+
             Ok(town_location)
         } else {
             Ok(None)
